@@ -41,6 +41,38 @@ python3 -m http.server 8000
 Geometrie rzek pochodzą z OpenStreetMap (Overpass), uproszczone algorytmem RDP
 i przycięte do granic obwodów rybackich.
 
+## Panel operatora (opcjonalny) — edycja łowisk online
+
+Projekt zawiera opcjonalny **panel operatora** ([`admin.html`](admin.html)), w którym
+wyznaczone osoby (np. z Okręgu PZW) mogą po zalogowaniu samodzielnie edytować łowiska:
+przeciągać punkty na właściwe akweny, poprawiać nazwy/powierzchnie/zasady oraz dodawać
+i usuwać zbiorniki. Zmiany trafiają do bazy i są widoczne na publicznej mapie po odświeżeniu.
+
+Rozwiązanie jest **bezserwerowe i darmowe**: dane trzyma [Supabase](https://supabase.com)
+(darmowy próg), a strony hostuje GitHub Pages. Bez konfiguracji Supabase publiczna mapa
+działa normalnie na danych z `data.json` (panel jest wtedy nieaktywny).
+
+### Konfiguracja (jednorazowo)
+
+1. Załóż darmowy projekt na <https://supabase.com>.
+2. W **Project Settings → API** skopiuj `Project URL` oraz klucz `anon public`
+   i wklej je do [`config.js`](config.js). (Klucz `anon` jest jawny z założenia —
+   bezpieczeństwo zapisu zapewniają reguły RLS, więc plik można commitować.)
+3. W **SQL Editor** wklej i uruchom całość [`db/schema.sql`](db/schema.sql)
+   (tworzy tabelę `zbiorniki` i reguły dostępu).
+4. Załaduj obecne dane do bazy:
+   ```bash
+   npm install @supabase/supabase-js
+   SUPABASE_URL="https://twojprojekt.supabase.co" \
+   SUPABASE_SERVICE_KEY="<klucz service_role z Project Settings → API>" \
+   node db/seed.mjs
+   ```
+   (Klucz `service_role` to sekret — używasz go tylko lokalnie, **nie** commituj.)
+5. W **Authentication → Providers / Sign In** wyłącz publiczną rejestrację, a w
+   **Authentication → Users** załóż konta (e-mail + hasło) operatorom.
+
+Panel jest pod adresem `…/admin.html` (np. <https://korntech.github.io/mapa-wod-pzw-rzeszow/admin.html>).
+
 ## Jak pomóc
 
 Zgłoś błąd lub poprawkę przez [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues)

@@ -6,6 +6,8 @@
 <title>Mapa wód PZW Okręg Rzeszów 2026</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <style>
 :root{--blue:#1565c0;--green:#2e7d32;--bg:#fff;}
 *{box-sizing:border-box;margin:0}
@@ -70,10 +72,33 @@ header small{opacity:.75}
  <div id="map"></div>
 </div>
 <script>
-fetch('data.json')
- .then(r => { if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
- .then(init)
- .catch(err => { document.getElementById('count').textContent = 'Nie udało się wczytać danych ('+err.message+'). Uruchom przez serwer HTTP.'; });
+// Zbiorniki czytamy na żywo z Supabase (jeśli skonfigurowany); rzeki i granice
+// zawsze z data.json. Gdy Supabase niedostępny — zbiorniki z data.json (fallback).
+async function loadZbiorniki(){
+ const cfg = window.PZW_CONFIG || {};
+ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) return null;
+ try{
+  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
+  const { data, error } = await sb.from('zbiorniki').select('n,lat,lon,ha,t,r,a').order('n');
+  if(error || !data) return null;
+  return data.map(z => ({ n:z.n, p:[z.lat,z.lon], ha:z.ha||'—', t:z.t||'', r:z.r||'', a:z.a||0 }));
+ }catch(e){ return null; }
+}
+
+(async function(){
+ let DATA;
+ try{
+  const r = await fetch('data.json');
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  DATA = await r.json();
+ }catch(err){
+  document.getElementById('count').textContent = 'Nie udało się wczytać danych ('+err.message+'). Uruchom przez serwer HTTP.';
+  return;
+ }
+ const live = await loadZbiorniki();
+ if(live && live.length) DATA.zb = live; // świeże dane z bazy; w razie braku zostają z data.json
+ init(DATA);
+})();
 
 function init(DATA){
 const map = L.map('map').setView([50.08, 21.95], 9);

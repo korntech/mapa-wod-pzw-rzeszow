@@ -7,4 +7,8 @@ mapa-pzw-netlify.zip
 mapa-wod-pzw-rzeszow.html
 PROMPT.md
 
+# Zależności skryptu seed (instalowane lokalnie do jednorazowego załadowania danych)
+node_modules/
+package-lock.json
+
 .DS_Store
