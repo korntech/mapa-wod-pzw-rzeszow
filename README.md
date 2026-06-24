@@ -60,14 +60,7 @@ działa normalnie na danych z `data.json` (panel jest wtedy nieaktywny).
    bezpieczeństwo zapisu zapewniają reguły RLS, więc plik można commitować.)
 3. W **SQL Editor** wklej i uruchom całość [`db/schema.sql`](db/schema.sql)
    (tworzy tabelę `zbiorniki` i reguły dostępu).
-4. Załaduj obecne dane do bazy:
-   ```bash
-   npm install @supabase/supabase-js
-   SUPABASE_URL="https://twojprojekt.supabase.co" \
-   SUPABASE_SERVICE_KEY="<klucz service_role z Project Settings → API>" \
-   node db/seed.mjs
-   ```
-   (Klucz `service_role` to sekret — używasz go tylko lokalnie, **nie** commituj.)
+4. W **SQL Editor** uruchom [`db/seed.sql`](db/seed.sql) — ładuje obecne 49 zbiorników do bazy.
 5. W **Authentication → Providers / Sign In** wyłącz publiczną rejestrację, a w
    **Authentication → Users** załóż konta (e-mail + hasło) operatorom.
 

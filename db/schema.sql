@@ -1,8 +1,5 @@
--- Schemat bazy dla panelu operatora PZW Rzeszów.
--- Uruchom w Supabase: SQL Editor → wklej całość → Run.
--- Bezpieczne do ponownego uruchomienia (idempotentne).
+-- Schemat bazy panelu operatora PZW Rzeszów (idempotentny).
 
--- Tabela łowisk (zbiorniki)
 create table if not exists public.zbiorniki (
   id          bigint generated always as identity primary key,
   n           text not null,                       -- nazwa
@@ -15,7 +12,6 @@ create table if not exists public.zbiorniki (
   updated_at  timestamptz not null default now()
 );
 
--- updated_at aktualizowane automatycznie przy każdej zmianie
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
 begin
