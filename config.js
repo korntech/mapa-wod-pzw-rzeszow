@@ -9,6 +9,6 @@
 // a panel admin.html poprosi o konfigurację.
 
 window.PZW_CONFIG = {
-  SUPABASE_URL: '',      // np. 'https://abcdefgh.supabase.co'
-  SUPABASE_ANON_KEY: ''  // długi klucz zaczynający się od 'eyJ...'
+  SUPABASE_URL: 'https://cnmuvkymtacspfrqnhma.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_TuEx7l7NZYtA0umL0KmWUA_pZ7waFM4' // klucz publishable (jawny)
 };
