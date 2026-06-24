@@ -111,11 +111,13 @@ L.control.layers({"Mapa":osm,"Teren":topo,"Satelita":sat}).addTo(map);
 const layers = {zb:L.layerGroup().addTo(map), niz:L.layerGroup().addTo(map), gor:L.layerGroup().addTo(map), gr:L.layerGroup()};
 const entries = []; // {f, name, sub, latlng, target}
 
+// Pola łowisk pochodzą z edytowalnej bazy — escapujemy je przed wstawieniem do HTML.
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function popupHtml(title, tag, tagColor, body, rules, approx){
- let h = `<h3>${title}</h3><span class="tag" style="background:${tagColor}">${tag}</span>`;
+ let h = `<h3>${esc(title)}</h3><span class="tag" style="background:${tagColor}">${esc(tag)}</span>`;
  if(approx) h += `<div class="approx">⚠ lokalizacja przybliżona</div>`;
- h += `<div>${body}</div>`;
- if(rules) h += `<div class="rules"><b>Zasady:</b> ${rules}</div>`;
+ h += `<div>${esc(body)}</div>`;
+ if(rules) h += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
  h += `<div style="margin-top:6px"><a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=__LAT__,__LON__">🧭 Nawiguj</a></div>`;
  return h;
 }
@@ -138,7 +140,7 @@ DATA.rivers.forEach(r=>{
 
 DATA.granice.forEach(g=>{
  const m = L.circleMarker(g.p, {radius:5, color:'#fff', weight:1.5, fillColor:'#616161', fillOpacity:.95});
- m.bindPopup(`<h3>${g.n}</h3><div style="font-size:12px">${g.d}</div>`);
+ m.bindPopup(`<h3>${esc(g.n)}</h3><div style="font-size:12px">${esc(g.d)}</div>`);
  m.addTo(layers.gr);
  entries.push({f:'gr', name:g.n, sub:g.d.slice(0,60)+'…', latlng:g.p, target:m, zoom:13});
 });
@@ -157,7 +159,7 @@ function render(){
  if(userPos) items.forEach(e=>e.km=distKm(userPos,e.latlng));
  if(userPos) items.sort((a,b)=>a.km-b.km);
  countEl.textContent = items.length + ' pozycji' + (userPos ? ' · posortowano wg odległości' : '');
- listEl.innerHTML = items.map((e,i)=>`<div class="item" data-i="${entries.indexOf(e)}"><span class="dot" style="background:${colors[e.f]}"></span><b>${e.name}</b>${e.km!==undefined?` <span style="color:#0d3b66;font-size:12px">· ${e.km.toFixed(1)} km</span>`:''}<div class="meta">${e.sub}</div></div>`).join('');
+ listEl.innerHTML = items.map((e,i)=>`<div class="item" data-i="${entries.indexOf(e)}"><span class="dot" style="background:${colors[e.f]}"></span><b>${esc(e.name)}</b>${e.km!==undefined?` <span style="color:#0d3b66;font-size:12px">· ${e.km.toFixed(1)} km</span>`:''}<div class="meta">${esc(e.sub)}</div></div>`).join('');
 }
 listEl.addEventListener('click',ev=>{
  const it = ev.target.closest('.item'); if(!it) return;
