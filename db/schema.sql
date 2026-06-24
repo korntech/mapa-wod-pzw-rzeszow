@@ -25,7 +25,31 @@ create trigger trg_zbiorniki_updated_at
   before update on public.zbiorniki
   for each row execute function public.set_updated_at();
 
--- Row Level Security: publiczny odczyt, zapis tylko dla zalogowanych operatorów
+-- Allow-lista operatorów (po e-mailu). Zapis do zbiorników mają tylko konta,
+-- których e-mail jest tu wpisany — niezależnie od ustawień rejestracji w Supabase.
+create table if not exists public.operators (
+  email     text primary key,
+  added_at  timestamptz not null default now()
+);
+alter table public.operators enable row level security;
+-- Brak polityk = brak bezpośredniego dostępu (anon/authenticated nie czytają tej tabeli);
+-- zarządzasz nią z SQL Editor (rola omijająca RLS).
+
+-- Czy zalogowany użytkownik jest operatorem. SECURITY DEFINER omija RLS na operators,
+-- więc allow-lista nie jest wystawiona na zewnątrz.
+create or replace function public.is_operator()
+returns boolean
+language sql
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.operators
+    where email = (auth.jwt() ->> 'email')
+  );
+$$;
+
+-- Row Level Security: publiczny odczyt, zapis tylko dla operatorów z allow-listy.
 alter table public.zbiorniki enable row level security;
 
 drop policy if exists "publiczny odczyt" on public.zbiorniki;
@@ -35,19 +59,22 @@ create policy "publiczny odczyt"
   using (true);
 
 drop policy if exists "zapis dla zalogowanych" on public.zbiorniki;
-create policy "zapis dla zalogowanych"
+drop policy if exists "zapis dla operatorów" on public.zbiorniki;
+create policy "zapis dla operatorów"
   on public.zbiorniki for insert
   to authenticated
-  with check (true);
+  with check (public.is_operator());
 
 drop policy if exists "edycja dla zalogowanych" on public.zbiorniki;
-create policy "edycja dla zalogowanych"
+drop policy if exists "edycja dla operatorów" on public.zbiorniki;
+create policy "edycja dla operatorów"
   on public.zbiorniki for update
   to authenticated
-  using (true) with check (true);
+  using (public.is_operator()) with check (public.is_operator());
 
 drop policy if exists "usuwanie dla zalogowanych" on public.zbiorniki;
-create policy "usuwanie dla zalogowanych"
+drop policy if exists "usuwanie dla operatorów" on public.zbiorniki;
+create policy "usuwanie dla operatorów"
   on public.zbiorniki for delete
   to authenticated
-  using (true);
+  using (public.is_operator());

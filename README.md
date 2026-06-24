@@ -63,6 +63,11 @@ działa normalnie na danych z `data.json` (panel jest wtedy nieaktywny).
 4. W **SQL Editor** uruchom [`db/seed.sql`](db/seed.sql) — ładuje obecne 49 zbiorników do bazy.
 5. W **Authentication → Providers / Sign In** wyłącz publiczną rejestrację, a w
    **Authentication → Users** załóż konta (e-mail + hasło) operatorom.
+6. Dla każdego operatora dopisz jego e-mail do allow-listy w **SQL Editor**:
+   ```sql
+   insert into public.operators (email) values ('operator@przyklad.pl');
+   ```
+   Tylko konta z tej listy mogą zapisywać dane — samo posiadanie konta nie wystarcza.
 
 Panel jest pod adresem `…/admin.html` (np. <https://korntech.github.io/mapa-wod-pzw-rzeszow/admin.html>).
 
