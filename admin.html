@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Panel operatora — Wody PZW Rzeszów</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.18.3/dist/leaflet-geoman.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <style>
-:root{--blue:#1565c0;--dark:#0d3b66;}
+:root{--blue:#1565c0;--dark:#0d3b66;--green:#2e7d32;}
 *{box-sizing:border-box;margin:0}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column}
 header{background:var(--dark);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:1001}
@@ -24,7 +26,10 @@ button{font-family:inherit}
 .btn:disabled{opacity:.5;cursor:default}
 #main{flex:1;display:flex;min-height:0}
 #side{width:340px;background:#f7f9fb;border-right:1px solid #ddd;display:flex;flex-direction:column;min-height:0}
-#search{margin:10px;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px}
+#tabs{display:flex;padding:8px 8px 0}
+#tabs .tab{flex:1;text-align:center;padding:7px 4px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:2px solid transparent;color:#666}
+#tabs .tab.on{color:var(--dark);border-bottom-color:var(--blue)}
+#search{margin:8px 10px;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px}
 #count{font-size:12px;color:#666;padding:0 12px 6px}
 #list{flex:1;overflow-y:auto;padding:6px}
 .item{padding:8px 10px;border-radius:8px;cursor:pointer;border-bottom:1px solid #eee}
@@ -40,14 +45,19 @@ button{font-family:inherit}
 #editor .ehead h2{font-size:15px;flex:1}
 #editor .ebody{padding:14px;overflow-y:auto;flex:1}
 #editor label{display:block;font-size:12px;color:#555;margin:10px 0 3px;font-weight:600}
-#editor input[type=text],#editor textarea{width:100%;padding:7px 9px;border:1px solid #ccc;border-radius:7px;font-size:13.5px;font-family:inherit}
-#editor textarea{min-height:90px;resize:vertical}
+#editor input[type=text],#editor textarea,#editor select{width:100%;padding:7px 9px;border:1px solid #ccc;border-radius:7px;font-size:13.5px;font-family:inherit}
+#editor textarea{min-height:80px;resize:vertical}
 #editor .row{display:flex;gap:8px}
 #editor .row>div{flex:1}
 #editor .chk{display:flex;align-items:center;gap:7px;margin-top:12px;font-size:13px;color:#444}
 #editor .hint{font-size:11.5px;color:#777;margin-top:4px}
 #editor .efoot{padding:12px 14px;border-top:1px solid #eee;display:flex;gap:8px}
 #editor .efoot .btn{flex:1;text-align:center;padding:9px}
+#editor .grp{display:none}
+#editor[data-type="zb"] .for-zb,#editor[data-type="gr"] .for-gr,#editor[data-type="rivers"] .for-rivers{display:block}
+#geombox{margin-top:12px;padding:10px;border:1px dashed #bbb;border-radius:8px;background:#fafafa}
+#geombox .btn{width:100%;padding:8px;margin-bottom:6px}
+#geombox.editing{border-color:var(--blue);background:#eef5fc}
 #overlay{position:fixed;inset:0;background:rgba(13,59,102,.92);z-index:3000;display:flex;align-items:center;justify-content:center}
 #overlay.hidden{display:none}
 .card{background:#fff;border-radius:14px;padding:26px;width:340px;max-width:92vw}
@@ -58,7 +68,6 @@ button{font-family:inherit}
 .card .btn{width:100%;margin-top:16px;padding:11px}
 .msg{font-size:13px;margin-top:12px;min-height:18px}
 .msg.err{color:#c62828}
-.msg.ok{color:#2e7d32}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0d3b66;color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none}
 #toast.show{opacity:1}
 @media(max-width:720px){#side{width:46%}#editor{width:100%}}
@@ -67,7 +76,7 @@ button{font-family:inherit}
 <body>
 <header>
  <h1>🛠️ Panel operatora — Wody PZW Rzeszów</h1>
- <small>edycja łowisk</small>
+ <small>edycja łowisk, rzek i granic</small>
  <div id="who">
   <a class="btn ghost" href="index.html" target="_blank">🗺️ Mapa publiczna</a>
   <span id="email"></span>
@@ -77,11 +86,16 @@ button{font-family:inherit}
 
 <div id="main">
  <div id="side">
-  <input id="search" placeholder="Szukaj łowiska…">
+  <div id="tabs">
+   <div class="tab on" data-type="zb">Zbiorniki</div>
+   <div class="tab" data-type="rivers">Rzeki</div>
+   <div class="tab" data-type="gr">Granice</div>
+  </div>
+  <input id="search" placeholder="Szukaj…">
   <div id="count"></div>
   <div id="list"></div>
   <div style="padding:10px;border-top:1px solid #ddd">
-   <button class="btn primary" id="addbtn" style="width:100%;padding:10px">➕ Dodaj łowisko</button>
+   <button class="btn primary" id="addbtn" style="width:100%;padding:10px"></button>
   </div>
  </div>
  <div id="map"></div>
@@ -89,19 +103,50 @@ button{font-family:inherit}
   <div class="ehead"><h2 id="etitle">Edycja</h2><button class="btn ghost" id="eclose">✕</button></div>
   <div class="ebody">
    <label>Nazwa</label>
-   <input type="text" id="f_n" placeholder="np. Zbiornik Blizne">
-   <div class="row">
-    <div><label>Powierzchnia (ha)</label><input type="text" id="f_ha" placeholder="np. 3,00"></div>
-    <div><label>Typ</label><input type="text" id="f_t" placeholder="np. Zbiornik zaporowy"></div>
+   <input type="text" id="f_n" placeholder="Nazwa">
+
+   <div class="grp for-zb">
+    <div class="row">
+     <div><label>Powierzchnia (ha)</label><input type="text" id="f_ha" placeholder="np. 3,00"></div>
+     <div><label>Typ</label><input type="text" id="f_t" placeholder="np. Zbiornik zaporowy"></div>
+    </div>
    </div>
-   <label>Zasady</label>
-   <textarea id="f_r" placeholder="Obowiązujące zasady połowu…"></textarea>
-   <label class="chk"><input type="checkbox" id="f_a"> Lokalizacja przybliżona (⚠)</label>
-   <div class="row" style="margin-top:12px">
-    <div><label>Szerokość (lat)</label><input type="text" id="f_lat"></div>
-    <div><label>Długość (lon)</label><input type="text" id="f_lon"></div>
+
+   <div class="grp for-rivers">
+    <div class="row">
+     <div><label>Kraina</label><select id="f_c"><option value="niz">nizinna</option><option value="gor">kraina pstrąga</option></select></div>
+     <div><label>Obwód</label><input type="text" id="f_o" placeholder="np. Wisłok 3"></div>
+    </div>
    </div>
-   <div class="hint">Przeciągnij pinezkę na mapie, aby ustawić dokładne położenie — pole „przybliżona” zostanie automatycznie odznaczone.</div>
+
+   <div class="grp for-rivers for-gr">
+    <label>Opis granic / lokalizacji</label>
+    <textarea id="f_d" placeholder="Opis"></textarea>
+   </div>
+
+   <div class="grp for-zb for-rivers">
+    <label>Zasady</label>
+    <textarea id="f_r" placeholder="Obowiązujące zasady połowu…"></textarea>
+   </div>
+
+   <div class="grp for-zb">
+    <label class="chk"><input type="checkbox" id="f_a"> Lokalizacja przybliżona (⚠)</label>
+   </div>
+
+   <div class="grp for-zb for-gr">
+    <div class="row" style="margin-top:12px">
+     <div><label>Szerokość (lat)</label><input type="text" id="f_lat"></div>
+     <div><label>Długość (lon)</label><input type="text" id="f_lon"></div>
+    </div>
+    <div class="hint">Przeciągnij pinezkę na mapie, aby ustawić dokładne położenie.</div>
+   </div>
+
+   <div class="grp for-rivers">
+    <div id="geombox">
+     <button class="btn" id="geomedit">✏️ Edytuj kształt linii</button>
+     <div class="hint" id="geominfo"></div>
+    </div>
+   </div>
   </div>
   <div class="efoot">
    <button class="btn danger" id="edel">🗑 Usuń</button>
@@ -130,9 +175,18 @@ button{font-family:inherit}
 <script>
 const CFG = window.PZW_CONFIG || {};
 const $ = id => document.getElementById(id);
-let sb = null, items = [], markers = {}, selId = null, addMode = false, map, layer, draftMarker = null;
+const TYPES = {
+ zb:     { table:'zbiorniki', kind:'point', add:'➕ Dodaj zbiornik',  color:'#1565c0' },
+ rivers: { table:'rivers',    kind:'line',  add:'✏️ Narysuj nową rzekę', color:'#0288d1' },
+ gr:     { table:'granice',   kind:'point', add:'➕ Dodaj granicę',   color:'#616161' }
+};
+let sb=null, map, layers={}, data={zb:[],rivers:[],granice:[]};
+let current='zb', sel=null, editLayer=null, addMode=false, geomEditing=false;
 
+const KEY = {zb:'zb', rivers:'rivers', gr:'granice'}; // klucz w obiekcie `data`
 function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2200); }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function pts2arr(ll){ return ll.map(p=>[+p.lat.toFixed(5), +p.lng.toFixed(5)]); }
 
 if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
  $('overlay').innerHTML = '<div class="card"><h2>Brak konfiguracji</h2><p>Uzupełnij <b>config.js</b> wartościami z panelu Supabase (Project URL i klucz anon), aby włączyć panel operatora.</p></div>';
@@ -148,129 +202,208 @@ function initMap(){
  const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'© Esri'}).addTo(map);
  const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'});
  L.control.layers({"Satelita":sat,"Mapa":osm}).addTo(map);
- layer = L.layerGroup().addTo(map);
- map.on('click', e=>{ if(addMode) placeDraft(e.latlng); });
+ layers = { zb:L.layerGroup().addTo(map), rivers:L.layerGroup().addTo(map), gr:L.layerGroup().addTo(map) };
+ map.on('click', e=>{ if(addMode) placePoint(e.latlng); });
+ map.on('pm:create', e=>{ // ukończono rysowanie nowej rzeki
+  const ll = e.layer.getLatLngs();
+  e.layer.remove();
+  map.pm.disableDraw();
+  newRiver(pts2arr(ll));
+ });
 }
 
 // --- LOGOWANIE ---
 $('loginform').addEventListener('submit', async ev=>{
  ev.preventDefault();
- $('loginbtn').disabled = true; $('loginmsg').className='msg'; $('loginmsg').textContent='Logowanie…';
+ $('loginbtn').disabled=true; $('loginmsg').className='msg'; $('loginmsg').textContent='Logowanie…';
  const { data, error } = await sb.auth.signInWithPassword({ email:$('l_email').value.trim(), password:$('l_pass').value });
- $('loginbtn').disabled = false;
+ $('loginbtn').disabled=false;
  if(error){ $('loginmsg').className='msg err'; $('loginmsg').textContent='Błąd logowania: '+error.message; return; }
  onLogin(data.session);
 });
-
-function onLogin(session){
- $('overlay').classList.add('hidden');
- $('email').textContent = session.user.email;
- loadAll();
-}
-
+function onLogin(session){ $('overlay').classList.add('hidden'); $('email').textContent=session.user.email; setType('zb'); loadAll(); }
 $('logout').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
 
 // --- DANE ---
 async function loadAll(){
- const { data, error } = await sb.from('zbiorniki').select('*').order('n');
- if(error){ toast('Błąd wczytywania: '+error.message); return; }
- items = data; renderList(); renderMarkers();
+ const [zb, rivers, gr] = await Promise.all([
+  sb.from('zbiorniki').select('*').order('n'),
+  sb.from('rivers').select('*').order('n'),
+  sb.from('granice').select('*').order('n')
+ ]);
+ const err = zb.error||rivers.error||gr.error;
+ if(err){ toast('Błąd wczytywania: '+err.message); return; }
+ data = { zb:zb.data, rivers:rivers.data, granice:gr.data };
+ renderMarkers(); renderList();
 }
 
 function renderMarkers(){
- layer.clearLayers(); markers = {};
- items.forEach(z=>{
-  const m = L.circleMarker([z.lat,z.lon], {radius:7,color:'#fff',weight:2,fillColor: z.a? '#b26a00':'#1565c0',fillOpacity:.95});
-  m.on('click', ()=>select(z.id));
-  m.addTo(layer); markers[z.id]=m;
+ Object.values(layers).forEach(l=>l.clearLayers());
+ data.zb.forEach(z=>{
+  L.circleMarker([z.lat,z.lon],{radius:7,color:'#fff',weight:2,fillColor:z.a?'#b26a00':'#1565c0',fillOpacity:.95})
+   .on('click',()=>select('zb',z.id)).addTo(layers.zb);
+ });
+ data.granice.forEach(g=>{
+  L.circleMarker([g.lat,g.lon],{radius:5,color:'#fff',weight:1.5,fillColor:'#616161',fillOpacity:.95})
+   .on('click',()=>select('gr',g.id)).addTo(layers.gr);
+ });
+ data.rivers.forEach(r=>{
+  const col = r.c==='gor'?'#2e7d32':'#0288d1';
+  L.polyline(r.pts||[],{color:col,weight:r.c==='gor'?3:4,opacity:.85})
+   .on('click',()=>select('rivers',r.id)).addTo(layers.rivers);
  });
 }
 
+function rows(){ return data[KEY[current]]; }
+
 function renderList(){
  const q = $('search').value.trim().toLowerCase();
- const f = items.filter(z=> !q || (z.n+' '+(z.t||'')).toLowerCase().includes(q));
- $('count').textContent = f.length+' łowisk'+(q?` (z ${items.length})`:'');
- $('list').innerHTML = f.map(z=>`<div class="item${z.id===selId?' sel':''}" data-id="${z.id}"><b>${esc(z.n)}</b>${z.a?' <span class="warn">⚠</span>':''}<div class="meta">${esc(z.t||'')} · ${esc(z.ha||'—')} ha</div></div>`).join('');
+ const f = rows().filter(o=> !q || (o.n+' '+(o.t||'')+' '+(o.o||'')).toLowerCase().includes(q));
+ const labels = {zb:'zbiorników', rivers:'rzek', gr:'granic'};
+ $('count').textContent = f.length+' '+labels[current]+(q?` (z ${rows().length})`:'');
+ $('list').innerHTML = f.map(o=>{
+  let meta='';
+  if(current==='zb') meta = `${esc(o.t||'')} · ${esc(o.ha||'—')} ha`;
+  else if(current==='rivers') meta = `${o.c==='gor'?'kraina pstrąga':'nizinna'}${o.o?' · '+esc(o.o):''} · ${(o.pts||[]).length} pkt`;
+  else meta = esc((o.d||'').slice(0,60));
+  const warn = (current==='zb'&&o.a)?' <span class="warn">⚠</span>':'';
+  return `<div class="item${sel&&o.id===sel.id?' sel':''}" data-id="${o.id}"><b>${esc(o.n)}</b>${warn}<div class="meta">${meta}</div></div>`;
+ }).join('');
 }
 $('search').addEventListener('input', renderList);
-$('list').addEventListener('click', e=>{ const it=e.target.closest('.item'); if(it) select(+it.dataset.id); });
+$('list').addEventListener('click', e=>{ const it=e.target.closest('.item'); if(it) select(current, +it.dataset.id); });
 
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+// --- ZAKŁADKI ---
+function setType(t){
+ cancelEdit();
+ current=t;
+ document.querySelectorAll('#tabs .tab').forEach(el=>el.classList.toggle('on', el.dataset.type===t));
+ $('addbtn').textContent = TYPES[t].add;
+ renderList();
+}
+document.querySelectorAll('#tabs .tab').forEach(el=>el.addEventListener('click',()=>setType(el.dataset.type)));
 
 // --- WYBÓR / EDYCJA ---
-function select(id){
- cancelDraft();
- selId = id;
- const z = items.find(x=>x.id===id); if(!z) return;
- fillForm(z, 'Edycja łowiska');
- map.setView([z.lat,z.lon], Math.max(map.getZoom(),14));
- makeDraggable(id);
+function select(type, id){
+ cancelEdit();
+ if(type!==current) setType(type);
+ const o = rows().find(x=>x.id===id); if(!o) return;
+ sel = o;
+ fillForm(type, o, 'Edycja');
+ if(TYPES[type].kind==='point'){
+  editLayer = L.marker([o.lat,o.lon],{draggable:true}).addTo(map);
+  editLayer.on('drag', ()=>{ const p=editLayer.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); if(type==='zb') $('f_a').checked=false; });
+  map.setView([o.lat,o.lon], Math.max(map.getZoom(),14));
+ } else {
+  const col = o.c==='gor'?'#2e7d32':'#0288d1';
+  editLayer = L.polyline(o.pts||[],{color:col,weight:5,opacity:.95}).addTo(map);
+  if((o.pts||[]).length) map.fitBounds(editLayer.getBounds(),{maxZoom:13});
+  updateGeomInfo();
+ }
  renderList();
  $('editor').classList.add('open');
 }
 
-function fillForm(z, title){
+function fillForm(type, o, title){
+ $('editor').dataset.type = type;
  $('etitle').textContent = title;
- $('f_n').value=z.n||''; $('f_ha').value=z.ha||''; $('f_t').value=z.t||'';
- $('f_r').value=z.r||''; $('f_a').checked=!!z.a;
- $('f_lat').value=z.lat; $('f_lon').value=z.lon;
- $('edel').style.display = z.id ? '' : 'none';
+ $('f_n').value=o.n||'';
+ $('f_ha').value=o.ha||''; $('f_t').value=o.t||''; $('f_r').value=o.r||''; $('f_a').checked=!!o.a;
+ $('f_c').value=o.c||'niz'; $('f_o').value=o.o||''; $('f_d').value=o.d||'';
+ if(type!=='rivers'){ $('f_lat').value=o.lat??''; $('f_lon').value=o.lon??''; }
+ $('edel').style.display = o.id ? '' : 'none';
 }
 
-function makeDraggable(id){
- Object.entries(markers).forEach(([mid,m])=>{
-  if(+mid===id){
-   const dm = L.marker([items.find(x=>x.id===id).lat, items.find(x=>x.id===id).lon], {draggable:true}).addTo(layer);
-   m.remove(); markers[id]=dm;
-   dm.on('drag', ()=>{ const p=dm.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); $('f_a').checked=false; });
-  }
- });
+// --- GEOMETRIA RZEK ---
+$('geomedit').addEventListener('click', ()=>{
+ if(!editLayer) return;
+ if(geomEditing){ editLayer.pm.disable(); geomEditing=false; }
+ else { editLayer.pm.enable({allowSelfIntersection:true}); geomEditing=true; }
+ $('geombox').classList.toggle('editing', geomEditing);
+ $('geomedit').textContent = geomEditing ? '✅ Zakończ edycję kształtu' : '✏️ Edytuj kształt linii';
+ updateGeomInfo();
+});
+function updateGeomInfo(){
+ if(!editLayer || current!=='rivers') return;
+ const n = (editLayer.getLatLngs()||[]).length;
+ $('geominfo').textContent = geomEditing
+  ? `${n} punktów. Przeciągaj wierzchołki, klikaj środki krawędzi aby dodać, prawym/Alt+klik aby usunąć.`
+  : `${n} punktów. Kliknij, aby edytować przebieg linii.`;
 }
 
 // --- DODAWANIE ---
 $('addbtn').addEventListener('click', ()=>{
- cancelDraft(); selId=null;
- addMode = true;
- toast('Kliknij na mapie miejsce nowego łowiska');
- $('addbtn').textContent='📍 Kliknij na mapie…';
+ cancelEdit();
+ if(TYPES[current].kind==='line'){
+  toast('Klikaj punkty na mapie; dwuklik kończy rysowanie');
+  map.pm.enableDraw('Line', {finishOn:'dblclick'});
+ } else {
+  addMode=true; $('addbtn').textContent='📍 Kliknij na mapie…';
+ }
 });
-
-function placeDraft(latlng){
- addMode=false; $('addbtn').textContent='➕ Dodaj łowisko';
- if(draftMarker) draftMarker.remove();
- draftMarker = L.marker(latlng,{draggable:true}).addTo(map);
- draftMarker.on('drag', ()=>{ const p=draftMarker.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); });
- fillForm({n:'',ha:'',t:'',r:'',a:0,lat:latlng.lat.toFixed(5),lon:latlng.lng.toFixed(5)}, 'Nowe łowisko');
+function placePoint(latlng){
+ addMode=false; $('addbtn').textContent=TYPES[current].add;
+ sel=null;
+ editLayer = L.marker(latlng,{draggable:true}).addTo(map);
+ editLayer.on('drag', ()=>{ const p=editLayer.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); });
+ fillForm(current, {lat:latlng.lat.toFixed(5), lon:latlng.lng.toFixed(5)}, current==='zb'?'Nowy zbiornik':'Nowa granica');
+ $('editor').classList.add('open');
+}
+function newRiver(arr){
+ sel=null;
+ editLayer = L.polyline(arr,{color:'#0288d1',weight:5,opacity:.95}).addTo(map);
+ fillForm('rivers', {pts:arr}, 'Nowa rzeka');
+ updateGeomInfo();
  $('editor').classList.add('open');
 }
 
-function cancelDraft(){ if(draftMarker){ draftMarker.remove(); draftMarker=null; } addMode=false; $('addbtn').textContent='➕ Dodaj łowisko'; }
-
-$('eclose').addEventListener('click', ()=>{ $('editor').classList.remove('open'); cancelDraft(); selId=null; loadAll(); });
-
 // --- ZAPIS ---
 $('esave').addEventListener('click', async ()=>{
- const lat=parseFloat($('f_lat').value), lon=parseFloat($('f_lon').value);
  if(!$('f_n').value.trim()){ toast('Podaj nazwę'); return; }
- if(isNaN(lat)||isNaN(lon)){ toast('Niepoprawne współrzędne'); return; }
- const rec = { n:$('f_n').value.trim(), ha:$('f_ha').value.trim()||'—', t:$('f_t').value.trim(), r:$('f_r').value.trim(), a:$('f_a').checked?1:0, lat, lon };
+ let rec;
+ if(current==='zb'){
+  const lat=parseFloat($('f_lat').value), lon=parseFloat($('f_lon').value);
+  if(isNaN(lat)||isNaN(lon)){ toast('Niepoprawne współrzędne'); return; }
+  rec = { n:$('f_n').value.trim(), ha:$('f_ha').value.trim()||'—', t:$('f_t').value.trim(), r:$('f_r').value.trim(), a:$('f_a').checked?1:0, lat, lon };
+ } else if(current==='gr'){
+  const lat=parseFloat($('f_lat').value), lon=parseFloat($('f_lon').value);
+  if(isNaN(lat)||isNaN(lon)){ toast('Niepoprawne współrzędne'); return; }
+  rec = { n:$('f_n').value.trim(), d:$('f_d').value.trim(), lat, lon };
+ } else {
+  const arr = editLayer ? pts2arr(editLayer.getLatLngs()) : [];
+  if(arr.length<2){ toast('Linia musi mieć min. 2 punkty'); return; }
+  rec = { n:$('f_n').value.trim(), c:$('f_c').value, o:$('f_o').value.trim(), d:$('f_d').value.trim(), r:$('f_r').value.trim(), pts:arr };
+ }
+ const tbl = TYPES[current].table;
  $('esave').disabled=true;
  let error;
- if(selId){ ({error} = await sb.from('zbiorniki').update(rec).eq('id',selId)); }
- else { ({error} = await sb.from('zbiorniki').insert(rec)); }
+ if(sel && sel.id){ ({error} = await sb.from(tbl).update(rec).eq('id',sel.id)); }
+ else { ({error} = await sb.from(tbl).insert(rec)); }
  $('esave').disabled=false;
  if(error){ toast('Błąd zapisu: '+error.message); return; }
- toast('Zapisano'); $('editor').classList.remove('open'); cancelDraft(); selId=null; loadAll();
+ toast('Zapisano'); cancelEdit(); loadAll();
 });
 
 // --- USUWANIE ---
 $('edel').addEventListener('click', async ()=>{
- if(!selId) return;
- if(!confirm('Usunąć to łowisko? Operacji nie można cofnąć.')) return;
- const { error } = await sb.from('zbiorniki').delete().eq('id',selId);
+ if(!sel || !sel.id) return;
+ if(!confirm('Usunąć ten obiekt? Operacji nie można cofnąć.')) return;
+ const { error } = await sb.from(TYPES[current].table).delete().eq('id',sel.id);
  if(error){ toast('Błąd usuwania: '+error.message); return; }
- toast('Usunięto'); $('editor').classList.remove('open'); selId=null; loadAll();
+ toast('Usunięto'); cancelEdit(); loadAll();
 });
+
+$('eclose').addEventListener('click', ()=>{ cancelEdit(); renderMarkers(); renderList(); });
+
+function cancelEdit(){
+ if(geomEditing && editLayer){ try{ editLayer.pm.disable(); }catch(e){} }
+ geomEditing=false; $('geombox').classList.remove('editing');
+ if(map && map.pm) map.pm.disableDraw();
+ if(editLayer){ editLayer.remove(); editLayer=null; }
+ addMode=false; if(TYPES[current]) $('addbtn').textContent=TYPES[current].add;
+ sel=null;
+ $('editor').classList.remove('open');
+}
 </script>
 </body>
 </html>

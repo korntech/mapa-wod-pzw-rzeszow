@@ -72,17 +72,24 @@ header small{opacity:.75}
  <div id="map"></div>
 </div>
 <script>
-// Zbiorniki czytamy na żywo z Supabase (jeśli skonfigurowany); rzeki i granice
-// zawsze z data.json. Gdy Supabase niedostępny — zbiorniki z data.json (fallback).
-async function loadZbiorniki(){
+// Wszystkie 3 warstwy czytamy na żywo z Supabase (jeśli skonfigurowany).
+// Każda warstwa z osobna spada do data.json, gdy baza nie odpowiada (fallback per warstwa).
+async function loadFromSupabase(){
  const cfg = window.PZW_CONFIG || {};
- if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) return null;
+ if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) return {};
  try{
   const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
-  const { data, error } = await sb.from('zbiorniki').select('n,lat,lon,ha,t,r,a').order('n');
-  if(error || !data) return null;
-  return data.map(z => ({ n:z.n, p:[z.lat,z.lon], ha:z.ha||'—', t:z.t||'', r:z.r||'', a:z.a||0 }));
- }catch(e){ return null; }
+  const [zb, rivers, granice] = await Promise.all([
+   sb.from('zbiorniki').select('n,lat,lon,ha,t,r,a').order('n'),
+   sb.from('rivers').select('n,c,o,d,r,pts').order('n'),
+   sb.from('granice').select('n,lat,lon,d').order('n')
+  ]);
+  const out = {};
+  if(!zb.error && zb.data) out.zb = zb.data.map(z => ({ n:z.n, p:[z.lat,z.lon], ha:z.ha||'—', t:z.t||'', r:z.r||'', a:z.a||0 }));
+  if(!rivers.error && rivers.data) out.rivers = rivers.data.map(r => ({ n:r.n, c:r.c||'niz', o:r.o||'', d:r.d||'', r:r.r||'', pts:r.pts||[] }));
+  if(!granice.error && granice.data) out.granice = granice.data.map(g => ({ n:g.n, p:[g.lat,g.lon], d:g.d||'' }));
+  return out;
+ }catch(e){ return {}; }
 }
 
 (async function(){
@@ -95,8 +102,10 @@ async function loadZbiorniki(){
   document.getElementById('count').textContent = 'Nie udało się wczytać danych ('+err.message+'). Uruchom przez serwer HTTP.';
   return;
  }
- const live = await loadZbiorniki();
- if(live && live.length) DATA.zb = live; // świeże dane z bazy; w razie braku zostają z data.json
+ const live = await loadFromSupabase();
+ if(live.zb && live.zb.length) DATA.zb = live.zb;
+ if(live.rivers && live.rivers.length) DATA.rivers = live.rivers;
+ if(live.granice && live.granice.length) DATA.granice = live.granice;
  init(DATA);
 })();
 

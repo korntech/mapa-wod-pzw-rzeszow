@@ -44,9 +44,11 @@ i przycięte do granic obwodów rybackich.
 ## Panel operatora (opcjonalny) — edycja łowisk online
 
 Projekt zawiera opcjonalny **panel operatora** ([`admin.html`](admin.html)), w którym
-wyznaczone osoby (np. z Okręgu PZW) mogą po zalogowaniu samodzielnie edytować łowiska:
-przeciągać punkty na właściwe akweny, poprawiać nazwy/powierzchnie/zasady oraz dodawać
-i usuwać zbiorniki. Zmiany trafiają do bazy i są widoczne na publicznej mapie po odświeżeniu.
+wyznaczone osoby (np. z Okręgu PZW) mogą po zalogowaniu samodzielnie edytować dane:
+- **zbiorniki** i **granice** (punkty) — przeciąganie pinezki na właściwe miejsce, edycja pól, dodawanie/usuwanie,
+- **rzeki** (polilinie) — edycja przebiegu (przesuwanie/dodawanie/usuwanie wierzchołków, przedłużanie linii za pomocą [Leaflet-Geoman](https://geoman.io/)), rysowanie nowych odcinków oraz edycja atrybutów (kraina, obwód, granice, zasady).
+
+Zmiany trafiają do bazy i są widoczne na publicznej mapie po odświeżeniu.
 
 Rozwiązanie jest **bezserwerowe i darmowe**: dane trzyma [Supabase](https://supabase.com)
 (darmowy próg), a strony hostuje GitHub Pages. Bez konfiguracji Supabase publiczna mapa
@@ -59,8 +61,9 @@ działa normalnie na danych z `data.json` (panel jest wtedy nieaktywny).
    i wklej je do [`config.js`](config.js). (Klucz `anon` jest jawny z założenia —
    bezpieczeństwo zapisu zapewniają reguły RLS, więc plik można commitować.)
 3. W **SQL Editor** wklej i uruchom całość [`db/schema.sql`](db/schema.sql)
-   (tworzy tabelę `zbiorniki` i reguły dostępu).
-4. W **SQL Editor** uruchom [`db/seed.sql`](db/seed.sql) — ładuje obecne 49 zbiorników do bazy.
+   (tworzy tabele `zbiorniki`, `rivers`, `granice`, allow-listę `operators` i reguły dostępu).
+4. W **SQL Editor** uruchom [`db/seed.sql`](db/seed.sql) (49 zbiorników) oraz
+   [`db/seed-rivers-granice.sql`](db/seed-rivers-granice.sql) (rzeki i granice).
 5. W **Authentication → Providers / Sign In** wyłącz publiczną rejestrację, a w
    **Authentication → Users** załóż konta (e-mail + hasło) operatorom.
 6. Dla każdego operatora dopisz jego e-mail do allow-listy w **SQL Editor**:

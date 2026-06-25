@@ -12,6 +12,26 @@ create table if not exists public.zbiorniki (
   updated_at  timestamptz not null default now()
 );
 
+create table if not exists public.rivers (
+  id          bigint generated always as identity primary key,
+  n           text not null,                       -- nazwa
+  c           text default 'niz',                  -- 'niz' nizinna / 'gor' kraina pstrąga
+  o           text default '',                     -- obwód
+  d           text default '',                     -- opis granic
+  r           text default '',                     -- zasady
+  pts         jsonb not null default '[]'::jsonb,  -- [[lat,lon],…]
+  updated_at  timestamptz not null default now()
+);
+
+create table if not exists public.granice (
+  id          bigint generated always as identity primary key,
+  n           text not null,                       -- nazwa
+  lat         double precision not null,
+  lon         double precision not null,
+  d           text default '',                     -- opis
+  updated_at  timestamptz not null default now()
+);
+
 create or replace function public.set_updated_at()
 returns trigger language plpgsql as $$
 begin
@@ -23,6 +43,16 @@ $$;
 drop trigger if exists trg_zbiorniki_updated_at on public.zbiorniki;
 create trigger trg_zbiorniki_updated_at
   before update on public.zbiorniki
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_rivers_updated_at on public.rivers;
+create trigger trg_rivers_updated_at
+  before update on public.rivers
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists trg_granice_updated_at on public.granice;
+create trigger trg_granice_updated_at
+  before update on public.granice
   for each row execute function public.set_updated_at();
 
 -- Allow-lista operatorów (po e-mailu). Zapis do zbiorników mają tylko konta,
@@ -78,3 +108,34 @@ create policy "usuwanie dla operatorów"
   on public.zbiorniki for delete
   to authenticated
   using (public.is_operator());
+
+-- Te same reguły dla rzek i granic: publiczny odczyt, zapis tylko dla operatorów.
+alter table public.rivers enable row level security;
+
+drop policy if exists "rivers odczyt" on public.rivers;
+create policy "rivers odczyt"
+  on public.rivers for select to anon, authenticated using (true);
+drop policy if exists "rivers zapis" on public.rivers;
+create policy "rivers zapis"
+  on public.rivers for insert to authenticated with check (public.is_operator());
+drop policy if exists "rivers edycja" on public.rivers;
+create policy "rivers edycja"
+  on public.rivers for update to authenticated using (public.is_operator()) with check (public.is_operator());
+drop policy if exists "rivers usuwanie" on public.rivers;
+create policy "rivers usuwanie"
+  on public.rivers for delete to authenticated using (public.is_operator());
+
+alter table public.granice enable row level security;
+
+drop policy if exists "granice odczyt" on public.granice;
+create policy "granice odczyt"
+  on public.granice for select to anon, authenticated using (true);
+drop policy if exists "granice zapis" on public.granice;
+create policy "granice zapis"
+  on public.granice for insert to authenticated with check (public.is_operator());
+drop policy if exists "granice edycja" on public.granice;
+create policy "granice edycja"
+  on public.granice for update to authenticated using (public.is_operator()) with check (public.is_operator());
+drop policy if exists "granice usuwanie" on public.granice;
+create policy "granice usuwanie"
+  on public.granice for delete to authenticated using (public.is_operator());
