@@ -12,7 +12,9 @@ oficjalnego „Wykazu wód PZW Okręgu w Rzeszowie udostępnionych do wędkowani
 - **punkty granic obwodów** i punkty orientacyjne,
 - wyszukiwarkę (także bez polskich znaków), filtry warstw, listę boczną, „Najbliżej mnie”
   z sortowaniem wg odległości i link „Nawiguj” otwierający domyślną nawigację telefonu,
-- trzy podkłady Głównego Urzędu Geodezji i Kartografii: mapa ogólnogeograficzna, mapa topograficzna, ortofotomapa.
+- trzy podkłady Głównego Urzędu Geodezji i Kartografii: mapa ogólnogeograficzna, mapa topograficzna, ortofotomapa,
+- **wykaz do druku** (`wykaz.html`): tabele zbiorników, rzek i granic ze współrzędnymi, oznaczeniem lokalizacji
+  przybliżonych i długością odcinków; przycisk „Pobierz PDF” zapisuje zestawienie w formacie A4.
 
 ## Zastrzeżenie
 
@@ -66,8 +68,9 @@ Po przejściu na własną domenę ustaw `site.basePath` w `config.json` (albo `P
 
 | Ścieżka | Zawartość |
 |---|---|
-| `index.html`, `admin.html` | strony (HTML + style) |
-| `src/main.js`, `src/admin.js` | logika mapy publicznej i panelu operatora |
+| `index.html`, `admin.html`, `wykaz.html` | strony (HTML + style) |
+| `src/main.js`, `src/admin.js`, `src/wykaz.js` | logika mapy publicznej, panelu operatora i wykazu do druku |
+| `src/geo.js` | odległości, długości linii, format współrzędnych |
 | `src/config.js` | dostęp do `config.json` |
 | `src/crs.js`, `src/basemaps.js` | układ współrzędnych i podkłady WMTS |
 | `src/data.js` | warstwa danych: baza z zapasem w postaci snapshotu |
