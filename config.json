@@ -86,6 +86,9 @@
     "wykazPzw": "https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku",
     "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
     "leaflet": "https://leafletjs.com",
-    "navigation": "geo:{lat},{lon}?q={lat},{lon}"
+    "navigation": {
+      "android": "geo:{lat},{lon}?q={lat},{lon}({name})",
+      "default": "https://maps.apple.com/?daddr={lat},{lon}&q={name}"
+    }
   }
 }
