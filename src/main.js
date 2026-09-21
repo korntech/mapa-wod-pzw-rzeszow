@@ -1,10 +1,11 @@
 /* Mapa publiczna (index.html). */
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
-import { BASEMAPS, LINKS } from './config.js';
+import { BASEMAPS, LINKS, SITE } from './config.js';
 import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
-import { loadData, esc } from './data.js';
+import { loadData, getSupabase, esc } from './data.js';
+import { waterOptions, initReportForm } from './report.js';
 import { distanceKm } from './geo.js';
 
 const $ = (id) => document.getElementById(id);
@@ -38,26 +39,15 @@ function navigationUrl([lat, lon], name) {
     .replaceAll('{name}', encodeURIComponent(name));
 }
 
-function popupHtml({ title, tag, tagColor, body, rules, approx, position }) {
+function popupHtml({ title, tag, tagColor, body, rules, approx, position, reportKey }) {
   let html = `<h3>${esc(title)}</h3><span class="tag" style="background:${tagColor}">${esc(tag)}</span>`;
   if (approx) html += '<div class="approx">⚠ lokalizacja przybliżona</div>';
   html += `<div>${esc(body)}</div>`;
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
   html +=
     `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a>` +
-    ` · <a target="_blank" rel="noopener noreferrer" href="${esc(reportUrl(position, title))}">✉️ Zgłoś błąd</a></div>`;
+    ` · <a href="#" data-report="${esc(reportKey)}">✉️ Zgłoś błąd</a></div>`;
   return html;
-}
-
-/** Adres zgłoszenia błędu: e-mail do Okręgu, a gdy nie jest skonfigurowany — formularz zgłoszenia w repozytorium. */
-function reportUrl([lat, lon], name) {
-  const fill = (t) => t.replaceAll('{name}', name).replaceAll('{lat}', lat).replaceAll('{lon}', lon);
-  const subject = fill(LINKS.report.subject);
-  const body = fill(LINKS.report.body);
-  if (LINKS.report.email) {
-    return `mailto:${LINKS.report.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  }
-  return `${LINKS.report.issues}?title=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 const normalize = (s) =>
@@ -77,7 +67,7 @@ function buildLayers(map, data) {
   };
   const entries = [];
 
-  data.zb.forEach((z) => {
+  data.zb.forEach((z, i) => {
     const marker = L.circleMarker(z.p, {
       radius: 7,
       color: '#fff',
@@ -87,7 +77,16 @@ function buildLayers(map, data) {
     });
     const tag = z.t + (z.ha !== '—' ? ` · ${z.ha} ha` : '');
     marker.bindPopup(
-      popupHtml({ title: z.n, tag, tagColor: COLORS.zb, body: '', rules: z.r, approx: z.a, position: z.p })
+      popupHtml({
+        title: z.n,
+        tag,
+        tagColor: COLORS.zb,
+        body: '',
+        rules: z.r,
+        approx: z.a,
+        position: z.p,
+        reportKey: `zb:${i}`,
+      })
     );
     marker.addTo(layers.zb);
     entries.push({
@@ -105,13 +104,22 @@ function buildLayers(map, data) {
     nameCount[r.n] = (nameCount[r.n] || 0) + 1;
   });
   const nameSeen = {};
-  data.rivers.forEach((r) => {
+  data.rivers.forEach((r, i) => {
     const kind = r.c === 'gor' ? 'gor' : 'niz';
     const line = L.polyline(r.pts, { color: COLORS[kind], weight: kind === 'gor' ? 3 : 4, opacity: 0.85 });
     const mid = r.pts[Math.floor(r.pts.length / 2)];
     const tag = kind === 'gor' ? 'kraina pstrąga i lipienia' : 'obwód ' + r.o;
     line.bindPopup(
-      popupHtml({ title: r.n, tag, tagColor: COLORS[kind], body: r.d, rules: r.r, approx: 0, position: mid })
+      popupHtml({
+        title: r.n,
+        tag,
+        tagColor: COLORS[kind],
+        body: r.d,
+        rules: r.r,
+        approx: 0,
+        position: mid,
+        reportKey: `rzeka:${i}`,
+      })
     );
     line.addTo(layers[kind]);
     let label = r.n;
@@ -247,6 +255,36 @@ function initMap(data) {
   initUi(map, layers, entries);
 }
 
+/** Wysyła zgłoszenie do funkcji Supabase; odpowiedź funkcji (także błędną) zwraca bez zmian. */
+async function sendReport(report) {
+  const sb = getSupabase();
+  if (!sb) return { ok: false, error: 'siec' };
+  const { data, error } = await sb.functions.invoke(LINKS.report.function, { body: report });
+  if (!error) return data;
+  try {
+    return await error.context.json();
+  } catch {
+    return { ok: false, error: 'siec' };
+  }
+}
+
+/** Formularz zgłoszeń otwierany z popupu łowiska i z okna „O mapie”. */
+function initReporting(data) {
+  const form = initReportForm({
+    options: waterOptions(data),
+    send: sendReport,
+    issuesUrl: LINKS.report.issues,
+    mapUrl: SITE.url,
+  });
+  document.addEventListener('click', (ev) => {
+    const link = ev.target.closest('a[data-report]');
+    if (!link) return;
+    ev.preventDefault();
+    $('infomodal').style.display = 'none';
+    form.open(link.dataset.report);
+  });
+}
+
 async function main() {
   applyLinks();
   initInfoModal();
@@ -260,6 +298,7 @@ async function main() {
   const snapshotDate = data.meta && data.meta.snapshot ? data.meta.snapshot.slice(0, 10) : '';
   if (snapshotDate) $('stan-danych').textContent = 'Stan danych: ' + snapshotDate + ' (snapshot bazy).';
   initMap(data);
+  initReporting(data);
 }
 
 main();

@@ -8,3 +8,6 @@ _prywatne/
 # Ustawienia narzędzi lokalnych
 .claude/
 .DS_Store
+
+# Pliki robocze CLI Supabase
+supabase/.temp/

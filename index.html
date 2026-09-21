@@ -39,6 +39,21 @@ header small{opacity:.75}
 .leaflet-popup-content .rules{margin-top:6px;font-size:12px;color:#444;max-height:140px;overflow-y:auto}
 .approx{color:#b26a00;font-size:11px}
 #count{font-size:12px;color:#666;padding:4px 12px;border-bottom:1px solid #ddd}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center}
+.modal>div{background:#fff;max-width:480px;width:calc(100% - 40px);max-height:calc(100% - 40px);overflow-y:auto;margin:20px;padding:22px;border-radius:12px;font-size:13.5px;line-height:1.5}
+.modal h2{font-size:16px;margin-bottom:10px}
+.modal-form label{display:block;margin-top:10px;font-weight:600;font-size:13px}
+.modal-form select,.modal-form textarea,.modal-form input{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;margin-top:4px;background:#fff}
+.modal-form textarea{min-height:110px;resize:vertical}
+.modal-form .hint{font-size:12px;color:#666;font-weight:400}
+.modal-form .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+.modal-form .actions{display:flex;gap:8px;align-items:center;margin-top:14px;flex-wrap:wrap}
+.modal-form button{background:#0d3b66;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer;font-weight:600}
+.modal-form button[disabled]{opacity:.6;cursor:default}
+.modal-form .status{font-size:13px;color:#b00020}
+.modal-form .status a{color:#0d3b66}
+#rep-done{display:none}
+#rep-done a{color:#0d3b66;font-weight:600}
 @media(max-width:720px){
  #main{flex-direction:column}
  #side{width:100%;height:46%;order:2;border-right:none;border-top:1px solid #ddd}
@@ -72,14 +87,33 @@ header small{opacity:.75}
  </div>
  <div id="map"></div>
 </div>
-<div id="infomodal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
-<div style="background:#fff;max-width:480px;margin:20px;padding:22px;border-radius:12px;font-size:13.5px;line-height:1.5">
-<h2 style="font-size:16px;margin-bottom:10px">O tej mapie</h2>
+<div id="infomodal" class="modal">
+<div>
+<h2>O tej mapie</h2>
 <p><b>Źródło danych o łowiskach:</b> „Wykaz wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania" — oficjalna książeczka Okręgu PZW Rzeszów na rok 2026 (<a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer">otwórz wykaz na stronie PZW</a>).</p>
 <p style="margin-top:8px"><b>Podkład i geometrie:</b> Główny Urząd Geodezji i Kartografii — mapa topograficzna i ortofotomapa (usługi WMTS Geoportalu) oraz Baza Danych Obiektów Topograficznych BDOT10k (przebiegi rzek i kontury zbiorników); dane z państwowego zasobu geodezyjnego, bezpłatne do ponownego wykorzystania. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠), a granice obwodów na rzekach wyznaczono orientacyjnie.</p>
 <p style="margin-top:8px;color:#b26a00"><b>Uwaga:</b> mapa ma charakter poglądowy. Przed wędkowaniem zweryfikuj zasady w aktualnym zezwoleniu i wykazie PZW.</p>
-<p style="margin-top:8px"><b>Projekt open source:</b> <a data-link="repo" href="#" target="_blank" rel="noopener noreferrer">repozytorium na GitHubie</a> — zauważyłeś(-aś) błąd? Zgłoś poprawkę.</p>
+<p style="margin-top:8px"><b>Projekt open source:</b> <a data-link="repo" href="#" target="_blank" rel="noopener noreferrer">repozytorium na GitHubie</a> — zauważyłeś(-aś) błąd w danych? <a href="#" data-report="">Zgłoś go przez formularz</a> — nie wymaga konta.</p>
 <p id="stan-danych" style="margin-top:8px;color:#888;font-size:12px">Dane odświeżane co noc z bazy Okręgu.</p>
+</div></div>
+<div id="reportmodal" class="modal">
+<div>
+<h2>Zgłoś błąd w danych</h2>
+<form id="reportform" class="modal-form" novalidate>
+<p class="hint">Zgłoszenie trafi jako publiczne issue do repozytorium projektu. Nie podawaj danych, których nie chcesz upubliczniać.</p>
+<label>Woda
+<select name="woda" required><option value="">— wybierz zbiornik lub rzekę —</option></select>
+</label>
+<label>Co jest nie tak? <span class="hint">(10–2000 znaków)</span>
+<textarea name="opis" required minlength="10" maxlength="2000" placeholder="Np. zbiornik jest zaznaczony w złym miejscu, zasady są nieaktualne, brakuje odcinka rzeki…"></textarea>
+</label>
+<label>Kontakt <span class="hint">(opcjonalnie — e-mail lub telefon, będzie widoczny publicznie)</span>
+<input name="kontakt" maxlength="200" autocomplete="off">
+</label>
+<label class="hp" aria-hidden="true">Strona www<input name="www" tabindex="-1" autocomplete="off"></label>
+<div class="actions"><button type="submit">Wyślij zgłoszenie</button><span class="status" role="status"></span></div>
+</form>
+<div id="rep-done"><p>Dziękujemy! Zgłoszenie zostało założone: <a href="#" target="_blank" rel="noopener noreferrer"></a></p><p class="hint" style="margin-top:8px">Możesz śledzić odpowiedź pod tym adresem.</p></div>
 </div></div>
 <script type="module" src="/src/main.js"></script>
 </body>

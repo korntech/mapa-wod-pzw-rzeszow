@@ -1,0 +1,6 @@
+project_id = "cnmuvkymtacspfrqnhma"
+
+# Formularz zgłoszeń jest publiczny (bez logowania), więc funkcja nie wymaga JWT;
+# ochroną jest limit zgłoszeń na adres IP i walidacja treści.
+[functions.zglos-blad]
+verify_jwt = false

@@ -32,6 +32,7 @@ w aktualnym zezwoleniu i w [oficjalnym wykazie wód](https://rzeszow.pzw.pl/stre
 | Podkłady | usługi WMTS Geoportalu w państwowym układzie EPSG:2180 (siatka, rozdzielczości i warstwy w `config.json`) |
 | Geometrie | BDOT10k (GUGiK) — przebiegi rzek i kontury zbiorników; pipeline w `tools/bdot/` |
 | Panel operatora | `admin.html` — logowanie e-mail + hasło (Supabase Auth), edycja punktów i przebiegów rzek |
+| Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium; bez konta GitHub |
 
 W czasie działania strona łączy się wyłącznie z Geoportalem GUGiK i własną bazą.
 
@@ -46,7 +47,7 @@ Wszystkie adresy i parametry zmienne są w jednym pliku **`config.json`**:
 | `snapshot` | nazwy plików snapshotu i kandydatów akwenów, obrys i progi walidacji, metadane źródeł |
 | `map` | środek i poziomy zoomu, definicja układu współrzędnych i siatki kafli |
 | `basemaps` | adres usługi WMTS, warstwy podkładów, podkład domyślny mapy i panelu, komunikat awaryjny |
-| `links` | linki zewnętrzne używane na stronie (wykaz PZW, repozytorium, szablony nawigacji i zgłoszenia błędu — `report.email` Okręgu) |
+| `links` | linki zewnętrzne używane na stronie (wykaz PZW, repozytorium, szablon nawigacji, nazwa funkcji zgłoszeń `report.function` i zapasowy formularz `report.issues`) |
 
 Klucz `anonKey` jest z założenia jawny (trafia do przeglądarki); o bezpieczeństwie zapisu
 decydują reguły RLS w bazie (`db/schema.sql`). Przy pustej sekcji `supabase` mapa działa
@@ -58,6 +59,7 @@ wyłącznie na snapshocie, a panel operatora wyświetla komunikat o braku konfig
 npm install
 npm run dev        # serwer deweloperski
 npm run build      # wersja produkcyjna do dist/
+npm test           # testy (walidacja zgłoszeń, formularz)
 npm run preview    # podgląd dist/ pod ścieżką z config.json
 npm run check      # składnia skryptów + walidacja snapshotu (to samo robi CI)
 ```
@@ -79,6 +81,7 @@ Po przejściu na własną domenę ustaw `site.basePath` w `config.json` (albo `P
 | `tools/bdot/` | pipeline geometrii z BDOT10k |
 | `tools/qa/` | QA harness: porównanie danych z oficjalnym wykazem PZW (PDF) |
 | `db/` | schemat bazy i migracje |
+| `supabase/functions/` | funkcja `zglos-blad` (zgłoszenia błędów → GitHub Issues) |
 | `docs/` | raporty jakości danych i specyfikacje |
 | `.github/workflows/` | CI, publikacja, snapshot, healthcheck |
 
@@ -120,6 +123,34 @@ Każdą uruchamia się raz w SQL Editor; skrypty są idempotentne.
 | `db/migrate-2026-09-20-bdot10k.sql` | geometrie rzek z BDOT10k, 10 zbiorników przeniesionych na akweny | uruchomiona |
 | `db/migrate-2026-09-21-uprawnienia.sql` | zawężenie uprawnień do allow-listy i funkcji pomocniczych | **do uruchomienia** |
 | `db/migrate-2026-09-21-kraina-pstraga.sql` | trzy cieki krainy pstrąga z wykazu (Słotowski, Dopływ z Połomii, Czarna (Grabinka)) i doprecyzowane zasady dwóch zbiorników | **do uruchomienia** |
+| `db/migrate-2026-09-21-zgloszenia.sql` | tabela `zgloszenia` (dziennik zgłoszeń i limit na adres IP) | **do uruchomienia** |
+
+### Zgłoszenia błędów z mapy
+
+Link „Zgłoś błąd” w popupie łowiska (i w oknie „O mapie”) otwiera formularz: wybór zbiornika
+lub rzeki, opis, opcjonalny kontakt. Strona wysyła zgłoszenie do funkcji Supabase
+[`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts), która sprawdza
+treść, ogranicza liczbę zgłoszeń do 5 na godzinę z jednego adresu IP, zakłada issue z etykietą
+`zgłoszenie` i zapisuje wpis w tabeli `zgloszenia`. Zgłaszający nie potrzebuje konta GitHub.
+Gdy funkcja nie odpowiada, formularz pokazuje zapasowy link do formularza issue na GitHubie
+z gotową treścią. Walidacja i treść issue są w module
+[`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js) współdzielonym ze stroną (testy: `npm test`).
+
+Wdrożenie (raz):
+
+1. Uruchom migrację `db/migrate-2026-09-21-zgloszenia.sql`.
+2. Na GitHubie utwórz token *fine-grained* ograniczony do tego repozytorium z uprawnieniem
+   **Issues: Read and write** (Settings → Developer settings → Personal access tokens).
+3. Ustaw sekrety i wdróż funkcję (CLI Supabase przez `npx`, po `npx supabase login`):
+   ```bash
+   npx supabase secrets set --project-ref <ref> GITHUB_TOKEN=github_pat_… \
+     GITHUB_REPO=korntech/mapa-wod-pzw-rzeszow \
+     MAP_URL=https://korntech.github.io/mapa-wod-pzw-rzeszow/ \
+     ALLOWED_ORIGINS=https://korntech.github.io
+   npx supabase functions deploy zglos-blad --project-ref <ref>
+   ```
+   `supabase/config.toml` wyłącza dla tej funkcji wymóg JWT (formularz jest publiczny).
+   Token wygasa w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sekret ponownie.
 
 ## Kontrola zgodności z wykazem PZW (QA harness)
 
@@ -134,7 +165,7 @@ granice, zasady). Uruchomienie i wymagania (tesseract z językiem polskim, poppl
 
 | Workflow | Kiedy | Co robi |
 |---|---|---|
-| `ci.yml` | push i pull request | składnia skryptów, walidacja snapshotu, build |
+| `ci.yml` | push i pull request | składnia skryptów, walidacja snapshotu, testy (`node --test`), build |
 | `deploy.yml` | push do `main` | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
 | `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie; utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot, job kończy się błędem i niczego nie nadpisuje |
 | `healthcheck.yml` | co 6 h | sprawdza stronę i bazę; przy awarii zakłada issue `awaria`, zamyka je, gdy kontrola przejdzie |
@@ -143,7 +174,7 @@ granice, zasady). Uruchomienie i wymagania (tesseract z językiem polskim, poppl
 
 ## Jak pomóc
 
-Zgłoś błąd lub poprawkę przez [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues) albo pull request.
+Zgłoś błąd przez formularz na mapie („Zgłoś błąd” w popupie łowiska) albo bezpośrednio przez [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues); poprawki mile widziane jako pull request.
 
 Znane braki:
 

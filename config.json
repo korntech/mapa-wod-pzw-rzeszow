@@ -88,9 +88,7 @@
     "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
     "leaflet": "https://leafletjs.com",
     "report": {
-      "email": "",
-      "subject": "Mapa wód PZW — zgłoszenie błędu: {name}",
-      "body": "Łowisko: {name}\nWspółrzędne: {lat}, {lon}\n\nOpis błędu:\n",
+      "function": "zglos-blad",
       "issues": "https://github.com/korntech/mapa-wod-pzw-rzeszow/issues/new"
     },
     "navigation": {
