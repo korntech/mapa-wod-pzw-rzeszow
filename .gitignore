@@ -8,3 +8,7 @@ mapa-wod-pzw-rzeszow.html
 PROMPT.md
 
 .DS_Store
+
+# Vite / npm
+node_modules/
+dist/

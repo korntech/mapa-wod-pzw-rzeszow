@@ -1,0 +1,57 @@
+# Nocny snapshot danych łowisk z Supabase do data.json + keep-alive bazy.
+#
+# Po co:
+#  - data.json w repo jest zawsze świeżą kopią bazy → mapa działa, gdy baza nie odpowiada,
+#    a każda zmiana danych zostawia ślad w historii Git (darmowy backup z historią);
+#  - samo zapytanie do bazy liczy się jako aktywność → projekt Supabase w darmowym progu
+#    nie jest pauzowany po 7 dniach bezczynności (20.09.2026 to właśnie zablokowało panel).
+#
+# Nie potrzebuje żadnego sekretu: klucz publiczny z config.js wystarcza do odczytu (RLS).
+# Bezpiecznik w tools/snapshot/export.mjs zatrzymuje job, gdy baza zwraca mniej danych
+# niż jest w data.json — wtedy NIC nie jest commitowane, a job kończy się błędem,
+# który widać w zakładce Actions.
+
+name: Snapshot danych z Supabase
+
+on:
+  schedule:
+    - cron: '15 3 * * *'   # codziennie 03:15 UTC (05:15 czasu polskiego latem)
+  workflow_dispatch: {}     # przycisk „Run workflow” w zakładce Actions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+
+      - name: Eksport z Supabase (keep-alive + snapshot)
+        run: node tools/snapshot/export.mjs
+
+      - name: Walidacja danych
+        run: node tools/snapshot/validate.mjs
+
+      - name: Commit, jeśli dane się zmieniły
+        run: |
+          if git diff --quiet -- public/data.json; then
+            echo "public/data.json bez zmian — nic do commitowania."
+            exit 0
+          fi
+          git config user.name  "snapshot-bot"
+          git config user.email "snapshot-bot@users.noreply.github.com"
+          git add public/data.json
+          git commit -m "Snapshot danych z Supabase ($(date -u +%Y-%m-%d))"
+          git push

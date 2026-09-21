@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architektura web + mobile — mapa wód PZW Rzeszów</title>
+<style>
+  :root {
+    --ink: #1c2430;
+    --muted: #5b6673;
+    --line: #d9dee5;
+    --soft: #f3f5f8;
+    --accent: #1f5f8b;
+    --accent-soft: #e6f0f7;
+    --ok: #2e7d32;
+    --warn: #b26a00;
+  }
+  * { box-sizing: border-box; }
+  html { font-size: 15px; }
+  body {
+    margin: 0; color: var(--ink); background: #fff;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .page { max-width: 900px; margin: 0 auto; padding: 32px 24px 64px; }
+  header { border-bottom: 2px solid var(--accent); padding-bottom: 16px; margin-bottom: 24px; }
+  header h1 { margin: 0 0 6px; font-size: 1.9rem; line-height: 1.2; }
+  header .meta { color: var(--muted); font-size: 0.95rem; }
+  h2 { font-size: 1.35rem; margin: 40px 0 10px; padding-top: 8px; border-top: 1px solid var(--line); color: var(--accent); }
+  h3 { font-size: 1.08rem; margin: 22px 0 6px; }
+  p { margin: 8px 0 10px; }
+  .lead { font-size: 1.05rem; }
+  table { border-collapse: collapse; width: 100%; margin: 10px 0 16px; font-size: 0.92rem; }
+  th, td { border: 1px solid var(--line); padding: 7px 9px; vertical-align: top; text-align: left; }
+  th { background: var(--soft); font-weight: 600; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.total td { font-weight: 700; background: var(--accent-soft); }
+  code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 0.88em; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 22px; }
+  li { margin: 3px 0; }
+  .callout { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 10px 14px; margin: 14px 0; border-radius: 0 4px 4px 0; }
+  .note { color: var(--muted); font-size: 0.88rem; }
+  .toc { columns: 2; column-gap: 32px; font-size: 0.95rem; }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  a { color: var(--accent); }
+  /* proste diagramy przepływu bez JS */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 8px; margin: 14px 0 18px; }
+  .flow .box { flex: 1 1 150px; border: 1.5px solid var(--accent); border-radius: 6px; padding: 8px 10px; background: #fff; font-size: 0.88rem; min-width: 140px; }
+  .flow .box b { display: block; font-size: 0.92rem; }
+  .flow .box.opt { border-style: dashed; color: var(--muted); }
+  .flow .box.db { background: var(--accent-soft); }
+  .flow .arrow { align-self: center; color: var(--accent); font-size: 1.3rem; padding: 0 2px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } .toc { columns: 1; } html { font-size: 14px; } }
+  @media print {
+    html { font-size: 11pt; }
+    .page { max-width: none; padding: 0; }
+    h2 { break-before: page; margin-top: 0; border-top: none; }
+    h2.first { break-before: auto; }
+    table, .callout, .flow { break-inside: avoid; }
+    a { color: var(--ink); text-decoration: none; }
+    .toc { columns: 2; }
+  }
+  @page { size: A4; margin: 18mm 16mm; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>Architektura web + mobile: mapa wód PZW Okręgu w Rzeszowie</h1>
+  <div class="meta">Stan na 20 września 2026 · autor: Kamil Kornacki (z pomocą Claude) · wersja 1.3 — dane z BDOT10k naniesione</div>
+</header>
+
+<div class="callout">
+  <b>W jednym zdaniu:</b> aplikacja webowa już istnieje; najtańszą i najbezpieczniejszą drogą do telefonu jest zrobienie z niej PWA na obecnym stosie, z jedną bazą danych dla obu, a wejście do sklepów (Capacitor) zostawić jako opcjonalny, płatny etap dla Okręgu. Łączny nakład Twojego czasu do domknięcia projektu bez sklepów: <b>ok. 120–190 godzin</b>, ze sklepami <b>ok. 160–250 godzin</b> (sekcja 12).
+</div>
+
+<div class="toc">
+<ol>
+  <li><a href="#s1">Punkt wyjścia i wymagania</a></li>
+  <li><a href="#s2">Jedna warstwa danych, dwa „opakowania”</a></li>
+  <li><a href="#s3">Warianty aplikacji mobilnej</a></li>
+  <li><a href="#s4">Porównanie wariantów</a></li>
+  <li><a href="#s5">Tryb offline nad wodą</a></li>
+  <li><a href="#s6">Panel operatora na telefonie</a></li>
+  <li><a href="#s7">Aplikacja webowa: build czy bez</a></li>
+  <li><a href="#s8">Koszty roczne w złotych</a></li>
+  <li><a href="#s9">Bezobsługowość i przekazanie PZW</a></li>
+  <li><a href="#s10">Rekomendacja i plan etapów</a></li>
+  <li><a href="#s11">Decyzje do podjęcia</a></li>
+  <li><a href="#s12">Koszt czasowy: ile godzin od Ciebie</a></li>
+  <li><a href="#s13">Źródła</a></li>
+</ol>
+</div>
+
+<!-- 1 -->
+<h2 id="s1" class="first">1. Punkt wyjścia i wymagania</h2>
+<p class="lead">Aplikacja webowa już istnieje i ma architekturę, która nadaje się na fundament dla mobile: statyczny front (Leaflet 1.9.4, vanilla JS, bez kroku budowania) na GitHub Pages, dane w Supabase (tabele <code>zbiorniki</code>, <code>rivers</code>, <code>granice</code>, RLS z allow-listą operatorów) z awaryjnym <code>data.json</code>, oraz panel operatora <code>admin.html</code> z edycją punktów i geometrii rzek (Leaflet-Geoman). Repo: <a href="https://github.com/korntech/mapa-wod-pzw-rzeszow">korntech/mapa-wod-pzw-rzeszow</a>, mapa: <a href="https://korntech.github.io/mapa-wod-pzw-rzeszow/">korntech.github.io/mapa-wod-pzw-rzeszow</a>.</p>
+<p>Pytanie nie brzmi więc „jak zbudować dwie aplikacje”, tylko „jak z jednej bazy kodu i jednej bazy danych obsłużyć przeglądarkę i telefon, nie mnożąc rzeczy do utrzymania”.</p>
+<table>
+<tr><th style="width:26%">Wymaganie</th><th>Ustalenie</th></tr>
+<tr><td>Zakres mobile v1</td><td>Pełna mapa (wyszukiwarka, filtry, „najbliżej mnie”, nawigacja) <b>plus panel operatora</b> — operator PZW poprawia lokalizacje z telefonu w terenie</td></tr>
+<tr><td>Offline</td><td>Przeglądanie łowisk i podkładu bez zasięgu nad wodą; edycja może wymagać sieci</td></tr>
+<tr><td>Utrzymanie</td><td>Nikt techniczny po stronie PZW — system ma być bezobsługowy, bez serwerów, bez rzeczy wygasających co miesiąc</td></tr>
+<tr><td>Koszt</td><td>Jak najbliżej 0 zł/rok; każda pozycja płatna musi być uzasadniona i możliwa do opłacenia przez Okręg</td></tr>
+<tr><td>Własność</td><td>Docelowo przekazane Okręgowi PZW w Rzeszowie; kod otwarty (MIT), wkład społeczności przez GitHub</td></tr>
+<tr><td>Kompetencje</td><td>Autor zna HTML/JS; brak doświadczenia w aplikacjach mobilnych — krzywa nauki jest kosztem</td></tr>
+<tr><td>Sklepy</td><td>Decyzja po porównaniu (sekcje 4, 8 i 12)</td></tr>
+<tr><td>Źródła danych</td><td>Wyłącznie polskie źródła państwowe (GUGiK/PZGiK) — decyzja z 20.09.2026</td></tr>
+</table>
+
+<!-- 2 -->
+<h2 id="s2">2. Zasada nadrzędna: jedna warstwa danych, dwa „opakowania”</h2>
+<p class="lead">Niezależnie od wyboru technologii mobilnej, obie aplikacje czytają i piszą tę samą bazę — nie budujemy drugiego backendu dla telefonu. Różnica między webem a mobile sprowadza się do tego, w czym uruchamia się ten sam kod frontu i skąd bierze podkład mapy, gdy nie ma sieci.</p>
+
+<div class="flow">
+  <div class="box"><b>Operator PZW</b>telefon lub laptop → zapis przez RLS</div>
+  <div class="arrow">→</div>
+  <div class="box db"><b>Supabase</b>zbiorniki · rivers · granice<br>(źródło prawdy)</div>
+  <div class="arrow">→</div>
+  <div class="box"><b>Mapa w przeglądarce</b>GitHub Pages</div>
+  <div class="box"><b>Aplikacja mobilna</b>PWA lub Capacitor</div>
+</div>
+<div class="flow">
+  <div class="box db"><b>Supabase</b></div>
+  <div class="arrow">→</div>
+  <div class="box"><b>GitHub Actions, co noc</b>eksport + keep-alive</div>
+  <div class="arrow">→</div>
+  <div class="box"><b>data.json</b>snapshot w repo — fallback i offline dla obu aplikacji</div>
+  <div class="box opt"><b>Podkłady</b>GUGiK WMTS online + paczka offline (opcja)</div>
+</div>
+
+<p>Odczyt: Supabase, a gdy nie odpowiada — snapshot <code>data.json</code>, który nocny job w GitHub Actions eksportuje z bazy i commituje do repo. Dzięki temu snapshot jest zawsze świeży (dziś jest ręczny i może się rozjechać z bazą), a mapa działa nawet gdy baza jest zapauzowana. Ten sam job wykonuje zapytanie do bazy, co liczy się jako aktywność i zapobiega pauzowaniu projektu Free po tygodniu bezczynności. Warstwa przestrzenna w tej bazie pochodzi już w całości z BDOT10k: przetworzono paczki z 23 powiatów, czyli 23 935 poligonów wód i 85 216 odcinków cieków.</p>
+
+<table>
+<tr><th style="width:24%">Wariant backendu</th><th>Opis</th><th class="num">Koszt/rok</th><th>Kiedy wybrać</th></tr>
+<tr><td><b>A. Supabase Free + snapshot w repo</b> (rekomendowany)</td><td>Obecna baza i RLS bez zmian; dochodzi nocny eksport do <code>data.json</code> i keep-alive. Limity Free (500 MB bazy, 5 GB transferu/mies.) są o rzędy wielkości powyżej potrzeb: całe dane to ok. 56 KB</td><td class="num">0 zł</td><td>Domyślnie — spełnia „bezobsługowość”, bo awaria bazy degraduje do statycznej mapy, nie do białej strony</td></tr>
+<tr><td><b>B. Git jako baza (bez Supabase)</b></td><td>Panel operatora zapisuje zmiany jako commit do repo przez GitHub API; mapa czyta tylko <code>data.json</code></td><td class="num">0 zł</td><td>Gdyby PZW nie chciało żadnego zewnętrznego konta poza GitHub. Minus: operator potrzebuje konta GitHub i tokenu; historia zmian w Git (plus), ale UX edycji i uprawnienia trudniejsze dla osób nietechnicznych</td></tr>
+<tr><td><b>C. Supabase Pro</b></td><td>Jak A, plus codzienne backupy, brak pauzowania, wsparcie e-mail</td><td class="num">ok. 1 140 zł</td><td>Tylko jeśli Okręg chce płacić za gwarancje; przy wariancie A snapshot w Git pełni rolę backupu za darmo</td></tr>
+</table>
+<p>Dwie zmiany w modelu danych warto zrobić teraz, bo mobile je wymusi: kolumna <code>updated_at</code> już jest — dołożyć zapytanie „co zmieniło się od daty X” (synchronizacja przyrostowa zamiast pobierania wszystkiego) oraz tabelę <code>zgloszenia</code> (wędkarz zgłasza błąd w danych z telefonu; operator zatwierdza w panelu). Druga jest opcjonalna, ale to najtańszy sposób, by społeczność poprawiała lokalizacje <code>a:1</code> bez dawania jej praw zapisu.</p>
+
+<!-- 3 -->
+<h2 id="s3">3. Warianty aplikacji mobilnej</h2>
+<p class="lead">Cztery realne drogi, od najtańszej do najdroższej w nauce i utrzymaniu. W1 i W2 używają istniejącego kodu; W3 i W4 oznaczają drugą bazę kodu.</p>
+
+<h3>W1. PWA — obecna strona jako aplikacja instalowana ze strony</h3>
+<p>Do istniejącego <code>index.html</code> dochodzi manifest, service worker (cache aplikacji i danych) i magazyn offline (IndexedDB). Użytkownik dodaje mapę do ekranu głównego z Safari lub Chrome; dostaje ikonę, pełny ekran i pracę offline. Panel operatora to ta sama strona (<code>admin.html</code>), więc „wersja mobilna panelu” to głównie praca nad układem dotykowym.</p>
+<ul>
+<li><b>Plusy:</b> 0 zł, jedna baza kodu, jeden deploy (push do <code>main</code>), żadnych kont deweloperskich ani przeglądów w sklepach, aktualizacja natychmiastowa u wszystkich.</li>
+<li><b>Minusy:</b> brak wpisu w App Store/Google Play (instalacja przez „Udostępnij → Do ekranu początkowego”, którą trzeba wytłumaczyć wędkarzom); na iOS brak automatycznej zachęty do instalacji i brak pracy w tle (np. śledzenie GPS przy wygaszonym ekranie).</li>
+<li><b>Co trzeba umieć:</b> to, co już jest w projekcie (JS, Leaflet) plus service worker i IndexedDB — kilka dni nauki.</li>
+<li><b>Stan iOS:</b> zainstalowana PWA jest zwolniona z 7-dniowego kasowania danych, które dotyka zwykłych stron; ma taki sam limit pamięci jak Safari (do 60% dysku na źródło); w UE działa normalnie po tym, jak Apple wycofało się z jej blokowania w iOS 17.4.</li>
+</ul>
+
+<h3>W2. Capacitor — ten sam kod w natywnej powłoce, w sklepach</h3>
+<p>Capacitor pakuje istniejącą stronę w natywny projekt iOS i Android. Kod webowy zostaje jeden; dochodzą wtyczki (geolokalizacja, system plików na paczkę kafli offline, ewentualnie powiadomienia). Buduje się lokalnie: Xcode 26 na Macu (masz Maca) i Android Studio.</p>
+<ul>
+<li><b>Plusy:</b> wpis w sklepach, ikona i instalacja „jak prawdziwa aplikacja”, dostęp do natywnych API, wciąż jedna baza kodu — naturalny krok po W1, bez przepisywania.</li>
+<li><b>Minusy:</b> konta deweloperskie (Apple 99 USD/rok, dla organizacji non-profit możliwe zwolnienie; Google 25 USD jednorazowo), przeglądy aplikacji, coroczna „higiena sklepowa”: nowe wymagane wersje SDK, certyfikaty, formularze prywatności. To stałe zadanie techniczne — sprzeczne z „nikt techniczny po stronie PZW”, chyba że robi to społeczność.</li>
+<li><b>Co trzeba umieć:</b> podstawy Xcode/Android Studio i proces publikacji; sam kod aplikacji bez zmian.</li>
+</ul>
+
+<h3>W3. React Native z Expo — natywna aplikacja z JavaScriptu</h3>
+<p>Nowa aplikacja w React Native, mapa przez <code>react-native-maps</code> lub MapLibre, dane z tego samego Supabase. Expo daje budowanie w chmurze (EAS: 15 buildów iOS i 15 Android miesięcznie za darmo) i aktualizacje bez sklepu.</p>
+<ul>
+<li><b>Plusy:</b> najlepsze wrażenia „natywności”, płynna mapa wektorowa, praca w tle, duża społeczność.</li>
+<li><b>Minusy:</b> druga baza kodu (web zostaje osobno), nauka Reacta, RN i ekosystemu Expo od zera, te same koszty sklepów co W2, więcej zależności do aktualizowania co roku. Dla projektu o 90 obiektach na mapie to przerost.</li>
+</ul>
+
+<h3>W4. Flutter — natywna aplikacja w Dart</h3>
+<p>Analogicznie do W3, w języku Dart i z widgetami Fluttera (mapa np. <code>flutter_map</code> lub MapLibre). Może też budować wersję webową, ale mapowe strony Fluttera na webie są cięższe od Leafleta i gorsze dla wkładu społeczności przyzwyczajonej do HTML/JS.</p>
+<ul>
+<li><b>Plusy:</b> jeden język na iOS, Android i (teoretycznie) web; bardzo dobra wydajność.</li>
+<li><b>Minusy:</b> nowy język i ekosystem, koszty sklepów, wyższy próg wejścia dla kontrybutorów z PZW/społeczności niż HTML/JS.</li>
+</ul>
+
+<!-- 4 -->
+<h2 id="s4">4. Porównanie wariantów mobilnych</h2>
+<p class="lead">Przy wymaganiach „bezobsługowość, 0 zł, brak doświadczenia mobilnego” W1 wygrywa w każdej kolumnie poza obecnością w sklepach; W2 jest jedyną drogą do sklepów, która nie wymaga drugiej bazy kodu.</p>
+<table>
+<tr><th style="width:22%">Kryterium</th><th>W1 PWA</th><th>W2 Capacitor</th><th>W3 React Native/Expo</th><th>W4 Flutter</th></tr>
+<tr><td>Koszt stały (zł/rok)</td><td>0</td><td>ok. 380 (Apple) + 95 jednorazowo (Google); 0 przy zwolnieniu non-profit</td><td>jak W2</td><td>jak W2</td></tr>
+<tr><td>Nakład na v1 (godziny, szacunek)</td><td>15–30</td><td>W1 + 20–40 na powłokę i publikację</td><td>120–250</td><td>120–250</td></tr>
+<tr><td>Krzywa nauki</td><td>Mała: service worker, IndexedDB</td><td>Średnia: Xcode, Android Studio, proces sklepów</td><td>Duża: React, RN, Expo</td><td>Duża: Dart, Flutter</td></tr>
+<tr><td>Bazy kodu</td><td>1</td><td>1</td><td>2</td><td>2 (lub 1 z gorszym webem)</td></tr>
+<tr><td>Aktualizacja u użytkownika</td><td>Natychmiast po deployu</td><td>Przez sklep (przegląd 1–7 dni) lub live-update</td><td>Przez sklep lub EAS Update</td><td>Przez sklep</td></tr>
+<tr><td>Praca offline (dane + podkład)</td><td>Tak, w limitach pamięci przeglądarki</td><td>Tak, pełny system plików</td><td>Tak</td><td>Tak</td></tr>
+<tr><td>GPS w tle, powiadomienia push</td><td>Nie (iOS) / częściowo (Android)</td><td>Tak</td><td>Tak</td><td>Tak</td></tr>
+<tr><td>Obecność w sklepach</td><td>Nie</td><td>Tak</td><td>Tak</td><td>Tak</td></tr>
+<tr><td>Coroczne obowiązki techniczne</td><td>Brak</td><td>Podbicie SDK, certyfikaty, formularze sklepów</td><td>jak W2 + zależności RN</td><td>jak W2 + zależności Fluttera</td></tr>
+<tr><td>Ryzyko dla PZW bez informatyka</td><td>Niskie</td><td>Średnie: aplikacja może wypaść ze sklepu, gdy nikt nie podbije wersji</td><td>Wysokie</td><td>Wysokie</td></tr>
+<tr><td>Wkład społeczności</td><td>Łatwy (HTML/JS, PR do repo)</td><td>Łatwy w kodzie, trudny w publikacji (dostęp do kont)</td><td>Trudniejszy</td><td>Trudniejszy</td></tr>
+</table>
+<p class="note">Opłaty: Apple Developer Program 99 USD/rok; zwolnienie z opłaty dla organizacji non-profit wymaga podmiotu prawnego z wpisem w rejestrze (nie osoba prywatna). Google Play 25 USD jednorazowo; konto organizacji wymaga numeru D-U-N-S i dokumentów rejestrowych, za to nie obowiązuje go test z 12 testerami przez 14 dni, który dotyczy kont osobistych. Przeliczenie po kursie NBP 3,80 zł/USD z 18.09.2026.</p>
+
+<!-- 5 -->
+<h2 id="s5">5. Tryb offline nad wodą</h2>
+<p class="lead">Offline składa się z trzech niezależnych warstw; pierwsze dwie są tanie i pewne, trzecia (podkład mapy) jest jedyną prawdziwą decyzją projektową.</p>
+<table>
+<tr><th style="width:18%">Warstwa</th><th>Rozwiązanie</th><th>Rozmiar</th><th>Uwagi</th></tr>
+<tr><td>Kod aplikacji</td><td>Service worker, strategia „cache najpierw, odśwież w tle” (np. Workbox)</td><td>ok. 1 MB z Leafletem</td><td>Biblioteki z CDN trzeba przenieść do repo, inaczej nie da się ich zapisać w cache</td></tr>
+<tr><td>Dane łowisk</td><td>Pełny zestaw w IndexedDB, odświeżany z Supabase przy starcie (przyrostowo po <code>updated_at</code>)</td><td>ok. 60 KB</td><td>Działa identycznie w PWA i Capacitorze</td></tr>
+<tr><td>Podkład mapy</td><td>Do wyboru: (a) cache kafli GUGiK dla okolicy, (b) paczka wektorowa PMTiles, (c) bez podkładu offline</td><td>(a) 20–100 MB na okolicę łowiska; (b) 100–400 MB na Podkarpacie — szacunek, do zmierzenia</td><td>Patrz niżej</td></tr>
+</table>
+
+<h3>Podkład offline — trzy opcje</h3>
+<p><b>(a) Cache kafli rastrowych GUGiK na żądanie.</b> Użytkownik na liście łowisk wciska „zapisz okolicę offline”; aplikacja pobiera kafle WMTS dla promienia np. 3 km w zoomach 12–16 i trzyma je w Cache API. Zero nowej infrastruktury, ten sam Leaflet, podkład topograficzny BDOT10k, który już jest w projekcie. Minus: kafle rastrowe są ciężkie, więc „cały okręg offline” nie wchodzi w grę, a na iOS duży cache może zostać wyczyszczony przy braku miejsca na telefonie. Trzeba też zweryfikować regulamin usług GUGiK pod kątem lokalnego buforowania — dane są otwarte, ale warto mieć to na piśmie. Fallback kafli OpenStreetMap został usunięty z projektu, więc tryb offline korzysta wyłącznie z kafli GUGiK — i to akurat upraszcza sprawę od strony formalnej: polityka korzystania z kafli OSM wprost zabrania pobierania ich na zapas, a w przypadku usług GUGiK takiego zakazu nie ma.</p>
+<p><b>(b) Paczka wektorowa PMTiles + MapLibre GL.</b> Jeden plik z kaflami wektorowymi dla obszaru okręgu, hostowany statycznie na Cloudflare R2 (10 GB i ruch wychodzący za darmo) albo w GitHub Releases. Online mapa czyta z niego fragmenty przez HTTP range requests; offline użytkownik pobiera cały plik raz. Skoro projekt przechodzi na źródła polskie, taka paczka musiałaby powstawać z BDOT10k, a nie z OpenStreetMap — co oznacza własny proces budowania kafli (ekstrakt warstw, generalizacja, tilowanie, aktualizacja przy każdym nowym wydaniu danych), czyli istotnie więcej pracy niż pobranie gotowej paczki z zewnętrznego serwisu. Plusy: cały okręg offline, płynne obracanie i skalowanie, mały transfer online, dane z tego samego źródła co reszta projektu. Minusy: zamiana Leafleta na MapLibre GL (Geoman w panelu operatora nie działa z MapLibre — panel musiałby zostać przy Leaflecie albo użyć innego edytora geometrii), własny pipeline kafli do zbudowania i utrzymania, coroczne odświeżenie paczki jako zadanie w GitHub Actions. Z tego powodu opcja pozostaje odłożona.</p>
+<p><b>(c) Offline tylko dane, bez podkładu.</b> Pinezki, granice i linie rzek na pustym tle z siatką współrzędnych, plus „Najbliżej mnie” z GPS. Brzmi ubogo, ale odpowiada na pytanie „gdzie jest granica obwodu i jakie są zasady”, które jest głównym powodem offline. Koszt: zero.</p>
+<div class="callout"><b>Rekomendacja:</b> zacząć od (c) jako gwarantowanego minimum, w tym samym etapie dodać (a) jako opcję „zapisz okolicę”, a (b) rozważyć dopiero, gdy wędkarze zgłoszą, że chcą całego okręgu offline. Taka kolejność nie wymaga zmiany biblioteki mapowej ani panelu operatora.</div>
+<p>Ograniczenia iOS istotne dla decyzji: brak synchronizacji w tle (dane odświeżają się tylko przy otwartej aplikacji), pytanie o zgodę na lokalizację może wracać, cache może zostać wyczyszczony przy braku miejsca — stąd dane łowisk zawsze dołączamy też do samej aplikacji (snapshot <code>data.json</code>), żeby nawet po wyczyszczeniu cache mapa miała co pokazać.</p>
+
+<!-- 6 -->
+<h2 id="s6">6. Panel operatora na telefonie</h2>
+<p class="lead">Panel <code>admin.html</code> technicznie już otwiera się na telefonie i zapisuje przez Supabase Auth, więc „panel w mobile” to praca nad ergonomią dotyku, nie nowa funkcja. W v1 edycja wymaga sieci; przeglądanie w panelu działa offline tak jak w mapie publicznej.</p>
+<table>
+<tr><th style="width:20%">Element</th><th style="width:22%">Dziś</th><th>Do zrobienia na telefon</th></tr>
+<tr><td>Przeciąganie pinezki</td><td>Działa myszką</td><td>Tryb „ustaw tu”: wybierz łowisko, wycentruj mapę celownikiem, zatwierdź przyciskiem — pewniejsze niż drag palcem; przycisk „użyj mojego GPS” dla operatora stojącego nad wodą</td></tr>
+<tr><td>Edycja rzek (Geoman)</td><td>Wierzchołki na desktopie</td><td>Wierzchołki są za małe pod palec: powiększyć uchwyty, ograniczyć mobile do przesuwania pojedynczych wierzchołków i „wstaw punkt tutaj”; rysowanie całych nowych odcinków zostawić na desktop</td></tr>
+<tr><td>Formularz atrybutów</td><td>Panel boczny</td><td>Dolny arkusz (bottom sheet) przewijany, pola z odpowiednimi klawiaturami</td></tr>
+<tr><td>Logowanie</td><td>E-mail + hasło</td><td>Bez zmian; opcjonalnie link magiczny na e-mail (Supabase to wspiera) — wygodniejsze na telefonie niż hasło</td></tr>
+<tr><td>Konflikt edycji</td><td>Brak zabezpieczenia</td><td>Porównanie <code>updated_at</code> przed zapisem: jeśli ktoś zmienił rekord w międzyczasie, pokaż różnicę zamiast nadpisywać</td></tr>
+</table>
+<p>Kolejka offline dla edycji (zapis lokalnie, wysłanie po odzyskaniu sieci) jest wykonalna, ale wprowadza konflikty i stany pośrednie, które trudno wyjaśnić operatorowi nietechnicznemu. Prostsza alternatywa o tym samym efekcie w terenie: operator zapisuje w telefonie notatkę „pozycja GPS + nazwa łowiska” jako zgłoszenie (tabela <code>zgloszenia</code> z sekcji 2), a właściwą edycję zatwierdza później, mając sieć. Zgłoszenie wysyła się samo, gdy tylko wróci zasięg.</p>
+<p>Panel nie musi przy tym kazać operatorowi szukać akwenu na mapie. Mając poligony wód z BDOT10k (warstwa <code>OT_PTWP_A</code>, z konturem i powierzchnią), system sam proponuje 3–4 kandydujące akweny w okolicy przybliżonej pinezki i pokazuje przy każdym powierzchnię porównaną z powierzchnią z wykazu — operator tylko wybiera właściwy. Praca przy jednym zbiorniku skraca się z minut do sekund. Z 49 zbiorników 39 (80%) miało lokalizację przybliżoną — pinezka stała w środku miejscowości, nie na akwenie — ale 10 z nich automat przeniósł już na rzeczywiste akweny bez udziału człowieka. Dwie kolejne poprawił ręcznie operator w panelu w czerwcu 2026. Zostaje 27 pozycji, dla każdej z nich lista kandydatów jest przygotowana; 4 z tych 27 nie mają dobrego kandydata w promieniu 5 km i wymagają wiedzy lokalnej. Uczciwe zastrzeżenie: to nie jest pełna automatyzacja — część pozycji z wykazu to kompleksy kilku stawów i wymagają decyzji człowieka, a nie dopasowania po powierzchni.</p>
+
+<!-- 7 -->
+<h2 id="s7">7. Aplikacja webowa: bez builda czy z lekkim buildem</h2>
+<p class="lead">Zostać przy vanilla JS, ale wprowadzić minimalny krok budowania (Vite) — to jedyna zmiana, która jest warunkiem PWA i Capacitora, a nie psuje prostoty dla kontrybutorów.</p>
+<p>Dziś projekt to trzy pliki HTML z bibliotekami z CDN. Dla PWA biblioteki muszą być w repo (cache offline), kod wspólny mapy i panelu warto wydzielić do modułów (<code>data.js</code>, <code>map.js</code>, <code>offline.js</code>), a Capacitor oczekuje katalogu z gotową stroną. Vite robi dokładnie to: <code>npm run build</code> składa moduły i zależności do folderu <code>dist/</code>, który GitHub Actions publikuje na Pages, a Capacitor pakuje w aplikację.</p>
+<table>
+<tr><th style="width:28%">Opcja</th><th>Plusy</th><th>Minusy</th></tr>
+<tr><td>Zostawić jak jest (bez builda)</td><td>Zero narzędzi, każdy edytuje HTML</td><td>Brak offline z bibliotekami z CDN, duplikacja kodu między <code>index.html</code> i <code>admin.html</code>, brak wspólnego kodu z Capacitorem</td></tr>
+<tr><td><b>Vite + moduły ES, bez frameworka</b> (rekomendowane)</td><td>Jeden <code>npm install &amp;&amp; npm run dev</code>; Leaflet, Geoman i supabase-js z npm; wspólne moduły; wtyczka PWA generuje service worker</td><td>Kontrybutor musi mieć Node; GitHub Actions zamiast „push do main = deploy” (i tak potrzebne dla snapshotu)</td></tr>
+<tr><td>Framework (React/Vue/Svelte)</td><td>Komponenty, stan</td><td>Nowa nauka, więcej zależności do aktualizowania — bez wyraźnej korzyści przy tej skali UI</td></tr>
+</table>
+<p>TypeScript jest opcjonalny; przy dwóch–trzech osobach i małym kodzie wystarczy JSDoc z typami, który VS Code i tak sprawdza. Dane pozostają w tym samym kształcie co dziś, więc PR-y społeczności do <code>data.json</code> nadal mają sens — z zastrzeżeniem, że po wdrożeniu nocnego snapshotu źródłem prawdy jest baza, a PR do danych powinien trafiać jako zgłoszenie do operatora.</p>
+
+<!-- 8 -->
+<h2 id="s8">8. Koszty roczne</h2>
+<p class="lead">Ścieżka rekomendowana (PWA + Supabase Free + GitHub Pages) kosztuje 0 zł/rok, a z własną domeną ok. 60–100 zł/rok. Sklepy dokładają ok. 380 zł/rok, chyba że Okręg uzyska zwolnienie Apple dla organizacji non-profit.</p>
+<table>
+<tr><th>Pozycja</th><th class="num">Ścieżka 0 zł (W1)</th><th class="num">Ze sklepami (W2)</th><th class="num">Z gwarancjami (W2 + Supabase Pro)</th></tr>
+<tr><td>Hosting strony i panelu (GitHub Pages, limit 100 GB/mies. transferu, 1 GB strony)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>Baza danych i logowanie (Supabase)</td><td class="num">0</td><td class="num">0</td><td class="num">ok. 1 140</td></tr>
+<tr><td>Podkłady online (GUGiK WMTS)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>Paczka offline na Cloudflare R2 (opcja b, do 10 GB)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>Automatyzacje (GitHub Actions, repo publiczne)</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>Apple Developer Program</td><td class="num">—</td><td class="num">ok. 380 (0 przy zwolnieniu)</td><td class="num">ok. 380 (0 przy zwolnieniu)</td></tr>
+<tr><td>Google Play (jednorazowo)</td><td class="num">—</td><td class="num">ok. 95 raz</td><td class="num">ok. 95 raz</td></tr>
+<tr><td>Domena (subdomena <code>mapa.rzeszow.pzw.pl</code> = 0; osobna <code>.pl</code> ok. 60–100)</td><td class="num">0–100</td><td class="num">0–100</td><td class="num">0–100</td></tr>
+<tr class="total"><td>Razem, rok 1</td><td class="num">0–100</td><td class="num">ok. 475–575</td><td class="num">ok. 1 600–1 700</td></tr>
+<tr class="total"><td>Razem, kolejne lata</td><td class="num">0–100</td><td class="num">ok. 380–480</td><td class="num">ok. 1 500–1 600</td></tr>
+</table>
+<p class="note">Kwoty w zł po kursie NBP 3,80 zł/USD (18.09.2026), zaokrąglone. Szacunek 100–150 zł/mies. z agendy spotkania można więc obniżyć do zera; jedyny wydatek, który naprawdę coś kupuje, to Apple (obecność w App Store).</p>
+
+<!-- 9 -->
+<h2 id="s9">9. Bezobsługowość i przekazanie PZW</h2>
+<p class="lead">„Bezobsługowość” osiąga się nie przez brak automatyzacji, lecz przez automatyzacje, które w razie awarii degradują do statycznej strony, oraz przez to, że wszystkie konta należą do Okręgu, a nie do osoby.</p>
+<h3>Własność kont</h3>
+<table>
+<tr><th style="width:18%">Zasób</th><th style="width:28%">Dziś</th><th>Docelowo</th></tr>
+<tr><td>Repozytorium</td><td><code>korntech/mapa-wod-pzw-rzeszow</code> (konto prywatne)</td><td>Organizacja GitHub Okręgu (np. <code>pzw-rzeszow</code>) z 2 właścicielami: osoba z Okręgu + autor; repo przeniesione, nie skopiowane (zachowuje historię, issues, gwiazdki)</td></tr>
+<tr><td>Supabase</td><td>Projekt na koncie prywatnym</td><td>Organizacja Supabase na e-mail Okręgu, autor jako członek; klucz <code>service_role</code> i hasło do bazy w sejfie haseł Okręgu</td></tr>
+<tr><td>Domena</td><td>—</td><td>Subdomena <code>rzeszow.pzw.pl</code> (rekord CNAME na Pages), konfigurowana przez administratora domeny PZW</td></tr>
+<tr><td>Sklepy (jeśli W2)</td><td>—</td><td>Konta na Okręg jako podmiot prawny (D-U-N-S, KRS); autor jako deweloper z uprawnieniami, nie właściciel</td></tr>
+<tr><td>Kafle offline (jeśli R2)</td><td>—</td><td>Konto Cloudflare Okręgu</td></tr>
+</table>
+<h3>Automatyzacje (GitHub Actions, wszystkie w repo)</h3>
+<ul>
+<li>Co noc: eksport tabel z Supabase do <code>data.json</code> i commit — backup w Git z historią zmian oraz keep-alive bazy w jednym.</li>
+<li>Co godzinę: healthcheck strony i bazy; przy awarii issue w repo i e-mail do wskazanego adresu Okręgu.</li>
+<li>Przy pushu do <code>main</code>: build Vite, testy (poprawny JSON, wszystkie punkty w granicach województwa, brak duplikatów), deploy na Pages.</li>
+<li>Raz w roku (przypomnienie w issue): nowy wykaz wód, przegląd zależności, odświeżenie paczki offline.</li>
+</ul>
+<h3>Runbook roczny dla Okręgu (bez wiedzy technicznej)</h3>
+<ol>
+<li>Styczeń: operator wprowadza zmiany z nowego wykazu w panelu (szkolenie 1 h, instrukcja z obrazkami w repo).</li>
+<li>Sprawdzenie, czy przyszło przypomnienie o wygasających płatnościach (tylko domena i ewentualnie Apple).</li>
+<li>Jeśli healthcheck założy issue, a nikt nie odpowie w 7 dni — mapa nadal działa ze snapshotu; naprawę może zrobić każdy z dostępem do repo.</li>
+</ol>
+<h3>Plan na wypadek odejścia autora</h3>
+<p>Wszystko, co potrzebne do odtworzenia systemu, jest w repo: <code>schema.sql</code>, seedy, workflowy, <code>README</code> z konfiguracją od zera. Test przekazania: druga osoba (np. z lokalnej społeczności IT lub uczelni w Rzeszowie) odtwarza środowisko z samego README w jeden wieczór. Dopóki ten test nie przejdzie, przekazanie nie jest zakończone.</p>
+
+<!-- 10 -->
+<h2 id="s10">10. Rekomendacja: PWA najpierw, gotowość na sklepy później</h2>
+<p class="lead">Budujemy jedną aplikację webową jako PWA (W1) na obecnym stosie z lekkim buildem Vite, z offline w wersji „dane zawsze, podkład na życzenie”, i utrzymujemy ją tak, by opakowanie w Capacitor (W2) było decyzją Okręgu o wydaniu ok. 380 zł/rok, a nie projektem programistycznym. React Native i Flutter odpadają: podwójny kod i krzywa nauki nie dają nic, czego potrzebuje mapa 90 obiektów.</p>
+<div class="flow">
+  <div class="box"><b>Etap 0</b>porządki i automatyzacje</div><div class="arrow">→</div>
+  <div class="box"><b>Etap 1</b>PWA + offline danych</div><div class="arrow">→</div>
+  <div class="box"><b>Etap 2</b>panel na telefon + zgłoszenia</div><div class="arrow">→</div>
+  <div class="box"><b>Etap 3</b>przekazanie PZW</div><div class="arrow">⇢</div>
+  <div class="box opt"><b>Etap 4 (opcja)</b>Capacitor i sklepy</div>
+</div>
+<table>
+<tr><th style="width:14%">Etap</th><th>Zakres</th><th>Kryterium gotowości</th></tr>
+<tr><td>0. Porządki</td><td>Vite + moduły, biblioteki z npm, GitHub Actions: build, testy danych, deploy, nocny snapshot, healthcheck</td><td>Mapa i panel działają jak dziś; <code>data.json</code> odnawia się sam; awaria Supabase nie psuje mapy</td></tr>
+<tr><td>1. PWA</td><td>Manifest, service worker, IndexedDB z danymi, ekran instalacji „dodaj do ekranu”, tryb offline (c) bez podkładu, opcjonalnie (a) „zapisz okolicę”</td><td>Telefon w trybie samolotowym pokazuje łowiska, granice i zasady; Lighthouse PWA bez błędów</td></tr>
+<tr><td>2. Panel mobilny</td><td>Celownik „ustaw tu”, GPS operatora, bottom sheet, większe uchwyty Geoman, ochrona przed nadpisaniem, tabela <code>zgloszenia</code> i formularz zgłoszenia błędu dla wędkarzy</td><td>Operator poprawia lokalizację zbiornika stojąc nad nim; zgłoszenie wędkarza wysyła się po odzyskaniu sieci</td></tr>
+<tr><td>3. Przekazanie</td><td>Organizacja GitHub i Supabase Okręgu, subdomena, instrukcja z obrazkami, szkolenie operatorów, test odtworzenia z README przez drugą osobę</td><td>Wszystkie konta na Okręg; druga osoba odtworzyła system; agenda spotkania odhaczona</td></tr>
+<tr><td>4. Sklepy (opcja)</td><td>Capacitor, ikony i zrzuty, polityka prywatności, konta deweloperskie Okręgu, wniosek o zwolnienie Apple</td><td>Aplikacja w obu sklepach; wydanie nowej wersji opisane krok po kroku w repo</td></tr>
+</table>
+<p>Etapy 0–2 nie wymagają żadnej decyzji ani wydatku po stronie PZW i można je zacząć od razu. Godziny na każdy etap — w sekcji 12.</p>
+
+<!-- 11 -->
+<h2 id="s11">11. Decyzje do podjęcia</h2>
+<p class="lead">Każda pozycja ma odpowiedź domyślną — brak sprzeciwu oznacza, że idziemy według niej.</p>
+<table>
+<tr><th>Decyzja</th><th style="width:14%">Kto</th><th style="width:34%">Propozycja domyślna</th></tr>
+<tr><td>Mobile jako PWA w v1, sklepy jako opcjonalny etap 4</td><td>Kamil</td><td>Tak</td></tr>
+<tr><td>Vite + moduły ES bez frameworka</td><td>Kamil</td><td>Tak; TypeScript nie, JSDoc tak</td></tr>
+<tr><td>Offline: dane zawsze, podkład „zapisz okolicę” z kafli GUGiK; PMTiles dopiero na życzenie użytkowników</td><td>Kamil</td><td>Tak, po sprawdzeniu regulaminu GUGiK co do buforowania</td></tr>
+<tr><td>Edycja w panelu tylko online; w terenie zgłoszenia z GPS</td><td>Kamil + operatorzy</td><td>Tak</td></tr>
+<tr><td>Tabela <code>zgloszenia</code> i publiczny formularz zgłoszenia błędu (bez logowania, z limitem)</td><td>Kamil</td><td>Tak, moderacja w panelu</td></tr>
+<tr><td>Organizacja GitHub i Supabase na Okręg, autor jako współwłaściciel</td><td>PZW</td><td>Do ustalenia na spotkaniu (punkt 2 agendy)</td></tr>
+<tr><td>Subdomena <code>mapa.rzeszow.pzw.pl</code></td><td>PZW</td><td>Tak, jeśli administrator domeny może dodać rekord CNAME</td></tr>
+<tr><td>Czy Okręg chce obecności w App Store/Google Play i czy złoży wniosek o zwolnienie Apple</td><td>PZW</td><td>Decyzja po etapie 2, gdy PWA będzie do pokazania</td></tr>
+<tr><td>Supabase Pro (ok. 1 140 zł/rok)</td><td>PZW</td><td>Nie; snapshot w Git jest backupem</td></tr>
+<tr><td>Licencja danych (kod jest MIT)</td><td>PZW</td><td>Dane przestrzenne z PZGiK (BDOT10k, PRG) — bezpłatne i dostępne do ponownego wykorzystania na mocy nowelizacji Prawa geodezyjnego i kartograficznego z 2020 r.; jedyny wymóg to podanie źródła („Dane: Główny Urząd Geodezji i Kartografii, BDOT10k”). Treść merytoryczna (nazwy łowisk, powierzchnie, zasady połowu, granice obwodów) pochodzi z Wykazu wód Okręgu i jest własnością Okręgu — to Okręg decyduje o jej licencji. Brak klauzuli share-alike i zobowiązań wobec podmiotów zewnętrznych; wiążący pozostaje oficjalny wykaz</td></tr>
+<tr><td>Źródła danych wyłącznie polskie (GUGiK/PZGiK)</td><td>Kamil</td><td>Tak — wykonane 20.09.2026</td></tr>
+</table>
+
+<!-- 12 -->
+<h2 id="s12">12. Koszt czasowy: ile godzin od Ciebie</h2>
+<p class="lead">Domknięcie projektu bez sklepów to <b>ok. 120–190 godzin Twojego czasu</b>, ze sklepami <b>ok. 160–250 godzin</b>. Praca z AI (Claude Code i podobne) skraca kodowanie mniej więcej o połowę względem ręcznego pisania, ale nie skraca spotkań, maili, czekania na decyzje Okręgu ani testów w terenie — a te stanowią jedną trzecią całości.</p>
+
+<h3>Założenia szacunku</h3>
+<ul>
+<li>Pracujesz sam, wieczorami i w weekendy, z asystentem AI do kodu, testów, dokumentacji i przygotowania materiałów na spotkania.</li>
+<li>Godziny „z AI” zakładają, że AI pisze pierwszą wersję, a Ty czytasz, testujesz na telefonie i poprawiasz — to nadal Twój czas. Model nie przetestuje aplikacji nad Wisłokiem ani nie odpowie za Ciebie na maila z Okręgu.</li>
+<li>Widełki: dolna wartość, gdy wszystko idzie gładko i PZW odpowiada w tydzień; górna, gdy pojawiają się zmiany założeń i długie przerwy w decyzjach.</li>
+<li>Nie liczę czasu oczekiwania (przeglądy w sklepach, odpowiedzi z Okręgu) — tylko czas, w którym coś robisz.</li>
+</ul>
+
+<h3>Godziny według rodzaju pracy</h3>
+<table>
+<tr><th>Rodzaj pracy</th><th>Co obejmuje</th><th class="num">Bez AI (h)</th><th class="num">Z AI (h)</th><th style="width:18%">Uwagi</th></tr>
+<tr><td>Etap 0 — porządki i automatyzacje</td><td>Vite, moduły, biblioteki z npm, GitHub Actions (build, testy danych, deploy, nocny snapshot, healthcheck)</td><td class="num">30–45</td><td class="num">12–20</td><td>AI pomaga najbardziej: workflowy i konfiguracja to szablony</td></tr>
+<tr><td>Etap 1 — PWA i offline</td><td>Manifest, service worker, IndexedDB, synchronizacja przyrostowa, tryb bez podkładu, „zapisz okolicę”, testy na iPhonie i Androidzie w trybie samolotowym</td><td class="num">45–70</td><td class="num">20–32</td><td>Najwięcej nauki (nowe API) i najwięcej testów na urządzeniach</td></tr>
+<tr><td>Etap 2 — panel mobilny i zgłoszenia</td><td>Celownik, GPS operatora, bottom sheet, uchwyty Geoman, ochrona przed nadpisaniem, tabela i formularz zgłoszeń, moderacja</td><td class="num">35–55</td><td class="num">16–26</td><td>UX dotykowy trzeba sprawdzić ręcznie, AI nie zrobi tego za Ciebie</td></tr>
+<tr><td>Etap 3 — przekazanie techniczne</td><td>Organizacje GitHub i Supabase, migracja projektu, subdomena, sejf haseł, README od zera, test odtworzenia przez drugą osobę</td><td class="num">15–22</td><td class="num">10–15</td><td>Głównie klikanie w panelach i czekanie na uprawnienia — AI mało pomaga</td></tr>
+<tr><td>Dokumentacja dla PZW</td><td>Instrukcja operatora z obrazkami, polityka prywatności / zastrzeżenie, notatka o utrzymaniu, materiały na spotkania</td><td class="num">15–22</td><td class="num">6–10</td><td>AI pisze, Ty robisz zrzuty ekranu i sprawdzasz</td></tr>
+<tr><td>Spotkania z Okręgiem</td><td>Spotkanie wg agendy (2–3 h) + 2–4 kolejne (pokaz PWA, szkolenie operatorów 1 h, przekazanie), każde z przygotowaniem i dojazdem</td><td class="num">14–24</td><td class="num">12–20</td><td>AI skraca tylko przygotowanie</td></tr>
+<tr><td>Maile i koordynacja</td><td>Ustalenia z Okręgiem, administratorem domeny, operatorami; ok. 30–45 min tygodniowo przez 5–8 miesięcy</td><td class="num">12–24</td><td class="num">10–20</td><td>Zależy od tempa odpowiedzi po stronie PZW</td></tr>
+<tr><td>Zmiany założeń architektonicznych</td><td>Po pierwszym spotkaniu i po pokazie PWA: typowo 2–3 korekty (np. inne uprawnienia operatorów, inny zakres offline, inna domena)</td><td class="num">15–30</td><td class="num">8–16</td><td>Wliczone przerabianie już napisanego kodu</td></tr>
+<tr><td>Testy w terenie i z operatorami</td><td>2–3 wyjścia nad wodę z telefonem, sesja z operatorem na jego telefonie, poprawki po testach</td><td class="num">10–16</td><td class="num">10–16</td><td>Nieskracalne</td></tr>
+<tr><td>Wsparcie po starcie (pierwsze 3 miesiące)</td><td>Błędy zgłaszane przez wędkarzy, pytania operatorów, drobne poprawki danych</td><td class="num">12–24</td><td class="num">8–16</td><td>Potem powinno spaść do kilku godzin rocznie</td></tr>
+<tr class="total"><td>Razem bez sklepów</td><td></td><td class="num">203–332</td><td class="num">112–191</td><td>zaokrąglając: <b>120–190 h</b></td></tr>
+<tr><td>Etap 4 — sklepy (opcja)</td><td>Capacitor, nauka Xcode/Android Studio, ikony i zrzuty, konta Okręgu (D-U-N-S, wniosek o zwolnienie Apple), pierwsza publikacja, poprawki po odrzuceniu, instrukcja wydawania</td><td class="num">45–80</td><td class="num">30–50</td><td>Plus czekanie: przeglądy 1–7 dni, weryfikacja konta organizacji 1–3 tygodnie</td></tr>
+<tr><td>Zmiany założeń wynikające ze sklepów</td><td>Polityka prywatności, wymagania Apple co do logowania i lokalizacji, dodatkowe ustalenia z Okręgiem jako właścicielem kont</td><td class="num">8–14</td><td class="num">6–10</td><td></td></tr>
+<tr class="total"><td>Razem ze sklepami</td><td></td><td class="num">256–426</td><td class="num">148–251</td><td>zaokrąglając: <b>160–250 h</b></td></tr>
+</table>
+
+<h3>Ile to w kalendarzu</h3>
+<table>
+<tr><th>Tempo</th><th class="num">Bez sklepów</th><th class="num">Ze sklepami</th><th>Uwagi</th></tr>
+<tr><td>5 h/tydzień (jeden wieczór + kawałek weekendu)</td><td class="num">6–9 miesięcy</td><td class="num">8–12 miesięcy</td><td>Realistyczne przy pracy zawodowej; przerwy na decyzje PZW mieszczą się „za darmo”</td></tr>
+<tr><td>10 h/tydzień</td><td class="num">3–5 miesięcy</td><td class="num">4–6 miesięcy</td><td>Wąskim gardłem staje się Okręg, nie Ty</td></tr>
+<tr><td>Etapy 0–2 same (bez PZW)</td><td class="num">50–80 h ≈ 5–8 tygodni przy 10 h/tydz.</td><td class="num">—</td><td>Można zacząć jutro; do pokazania na pierwszym spotkaniu</td></tr>
+</table>
+
+<h3>Co najbardziej rozciąga czas — i jak temu zapobiec</h3>
+<ul>
+<li><b>Decyzje Okręgu bez terminu.</b> Każdy punkt agendy dostaje proponowaną odpowiedź domyślną i datę, po której wchodzi w życie (sekcja 11). To zamienia „czekamy” na „idziemy, chyba że ktoś się sprzeciwi”.</li>
+<li><b>Zmiany założeń po napisaniu kodu.</b> Pokaż działającą PWA (koniec etapu 1) zanim zaczniesz panel mobilny; zmiany są wtedy tańsze o połowę.</li>
+<li><b>Sklepy.</b> Prawie jedna trzecia dodatkowego czasu i jedyny element z powtarzalnym obowiązkiem rocznym. Dlatego są etapem 4, a nie warunkiem startu.</li>
+<li><b>Testy na iOS.</b> Safari zachowuje się inaczej niż Chrome; zaplanuj testy na prawdziwym iPhonie od etapu 1, nie na końcu.</li>
+</ul>
+<p>Przejście na źródła BDOT10k dokłada do etapu 0 ok. 8–14 godzin: ekstraktor danych (pobranie paczek per powiat, wycięcie warstw rzek, kanałów i poligonów wód), podmiana geometrii w bazie oraz weryfikacja, czy nowe kontury i powierzchnie zgadzają się z wykazem. To jednorazowy koszt, który zdejmuje z projektu ryzyko licencyjne i zamyka temat na stałe — zamiast wracać do niego przy każdym pytaniu o pochodzenie danych. Prace te zostały wykonane 20.09.2026, więc ten czas jest już za nami i nie obciąża pozostałego harmonogramu.</p>
+
+<!-- 13 -->
+<h2 id="s13">13. Źródła</h2>
+<ul class="note">
+<li>Apple Developer Program, opłata roczna: <a href="https://developer.apple.com/support/compare-memberships/">developer.apple.com/support/compare-memberships</a>; zwolnienie z opłaty dla organizacji non-profit: <a href="https://developer.apple.com/support/membership-fee-waiver/">developer.apple.com/support/membership-fee-waiver</a></li>
+<li>Google Play, opłata rejestracyjna: <a href="https://support.google.com/googleplay/android-developer/answer/6112435">support.google.com</a>; konto organizacji i reguła 12 testerów: <a href="https://www.iconikai.com/blog/google-play-developer-account-fee-2026">iconikai.com</a></li>
+<li>Supabase, plany Free i Pro: <a href="https://supabase.com/pricing">supabase.com/pricing</a></li>
+<li>GitHub Pages, limity: <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits">docs.github.com</a></li>
+<li>Cloudflare R2, cennik: <a href="https://developers.cloudflare.com/r2/pricing/">developers.cloudflare.com/r2/pricing</a></li>
+<li>Expo EAS, cennik: <a href="https://expo.dev/pricing">expo.dev/pricing</a></li>
+<li>Capacitor, wymagania środowiska: <a href="https://capacitorjs.com/docs/getting-started/environment-setup">capacitorjs.com</a></li>
+<li>Usługi pobierania WFS Geoportalu: <a href="https://www.geoportal.gov.pl/en/services/download-service-wfs/">geoportal.gov.pl/en/services/download-service-wfs</a></li>
+<li>BDOT10k, Baza Danych Obiektów Topograficznych GUGiK: <a href="http://www.gugik.gov.pl/pzgik/zamow-dane/baza-danych-obiektow-topograficznych-bdot-10k">gugik.gov.pl/pzgik/zamow-dane/baza-danych-obiektow-topograficznych-bdot-10k</a></li>
+<li>UUG — Uniwersalna Usługa Geokodowania GUGiK: <a href="https://services.gugik.gov.pl/uug/">services.gugik.gov.pl/uug</a></li>
+<li>Polityka korzystania z kafli OpenStreetMap (zakaz pobierania na zapas — uzasadnienie usunięcia fallbacku): <a href="https://operations.osmfoundation.org/policies/tiles/">operations.osmfoundation.org/policies/tiles</a></li>
+<li>WebKit, zwolnienie PWA z 7-dniowego kasowania danych: <a href="https://webkit.org/tracking-prevention/">webkit.org/tracking-prevention</a>; limity pamięci: <a href="https://webkit.org/blog/14403/updates-to-storage-policy/">webkit.org/blog/14403</a></li>
+<li>Apple wycofuje blokadę PWA w UE (iOS 17.4): <a href="https://techcrunch.com/2024/03/01/apple-reverses-decision-about-blocking-web-apps-on-iphones-in-the-eu/">techcrunch.com</a></li>
+<li>Kurs USD/PLN: NBP, tabela A z 18.09.2026, 3,7998 zł</li>
+<li>Stan projektu: README, specyfikacje w <code>docs/superpowers/specs/</code> i <code>agenda-spotkania-pzw.md</code> w repozytorium</li>
+</ul>
+
+</div>
+</body>
+</html>

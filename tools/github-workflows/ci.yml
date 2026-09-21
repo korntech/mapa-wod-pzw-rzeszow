@@ -1,0 +1,31 @@
+# Kontrola przy każdym pushu i pull requeście: składnia, walidacja danych, build.
+# Chroni przed wypchnięciem uszkodzonych danych albo skryptu z literówką —
+# czerwony znaczek przy commicie zamiast białej mapy u wędkarzy.
+
+name: Kontrola kodu i danych
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Składnia skryptów i walidacja data.json
+        run: npm run check
+      - name: Poprawność JSON kandydatów
+        run: node -e "JSON.parse(require('fs').readFileSync('public/data/kandydaci-zbiorniki.json','utf8')); console.log('kandydaci OK')"
+      - name: Build (Vite)
+        run: npm run build

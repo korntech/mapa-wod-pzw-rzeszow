@@ -1,0 +1,24 @@
+{
+  "name": "mapa-wod-pzw-rzeszow",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Mapa wód PZW Okręgu w Rzeszowie — dane z wykazu Okręgu i BDOT10k (GUGiK)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "export": "node tools/snapshot/export.mjs",
+    "validate": "node tools/snapshot/validate.mjs",
+    "check": "node --check config.js && node --check tools/snapshot/export.mjs && node --check tools/snapshot/validate.mjs && npm run validate"
+  },
+  "dependencies": {
+    "@geoman-io/leaflet-geoman-free": "^2.18.3",
+    "@supabase/supabase-js": "^2.45.0",
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -4,10 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mapa wód PZW Okręg Rzeszów 2026</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
 <style>
 :root{--blue:#1565c0;--green:#2e7d32;--bg:#fff;}
 *{box-sizing:border-box;margin:0}
@@ -50,7 +46,7 @@ header small{opacity:.75}
 <body>
 <header>
  <h1>🎣 Wody PZW — Okręg Rzeszów</h1>
- <small>wg wykazu 2026 · podkład OpenStreetMap</small>
+ <small>wg wykazu 2026 · dane i podkład: GUGiK</small>
  <button id="locbtn">📍 Najbliżej mnie</button>
  <a href="https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku" target="_blank" style="color:#ffd54f;font-size:13px;font-weight:600;text-decoration:none">📄 Wykaz źródłowy (PZW)</a>
  <button id="infobtn" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">ℹ️ O mapie</button>
@@ -72,138 +68,15 @@ header small{opacity:.75}
  </div>
  <div id="map"></div>
 </div>
-<script>
-// Wszystkie 3 warstwy czytamy na żywo z Supabase (jeśli skonfigurowany).
-// Każda warstwa z osobna spada do data.json, gdy baza nie odpowiada (fallback per warstwa).
-async function loadFromSupabase(){
- const cfg = window.PZW_CONFIG || {};
- if(!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) return {};
- try{
-  const sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY);
-  const [zb, rivers, granice] = await Promise.all([
-   sb.from('zbiorniki').select('n,lat,lon,ha,t,r,a').order('n'),
-   sb.from('rivers').select('n,c,o,d,r,pts').order('n'),
-   sb.from('granice').select('n,lat,lon,d').order('n')
-  ]);
-  const out = {};
-  if(!zb.error && zb.data) out.zb = zb.data.map(z => ({ n:z.n, p:[z.lat,z.lon], ha:z.ha||'—', t:z.t||'', r:z.r||'', a:z.a||0 }));
-  if(!rivers.error && rivers.data) out.rivers = rivers.data.map(r => ({ n:r.n, c:r.c||'niz', o:r.o||'', d:r.d||'', r:r.r||'', pts:r.pts||[] }));
-  if(!granice.error && granice.data) out.granice = granice.data.map(g => ({ n:g.n, p:[g.lat,g.lon], d:g.d||'' }));
-  return out;
- }catch(e){ return {}; }
-}
-
-(async function(){
- let DATA;
- try{
-  const r = await fetch('data.json');
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  DATA = await r.json();
- }catch(err){
-  document.getElementById('count').textContent = 'Nie udało się wczytać danych ('+err.message+'). Uruchom przez serwer HTTP.';
-  return;
- }
- const live = await loadFromSupabase();
- if(live.zb && live.zb.length) DATA.zb = live.zb;
- if(live.rivers && live.rivers.length) DATA.rivers = live.rivers;
- if(live.granice && live.granice.length) DATA.granice = live.granice;
- init(DATA);
-})();
-
-function init(DATA){
-const map = L.map('map').setView([50.08, 21.95], 9);
-map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
-const osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
-const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {maxZoom:17, attribution:'© OpenTopoMap (CC-BY-SA)'});
-const sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:19, attribution:'© Esri'});
-L.control.layers({"Mapa":osm,"Teren":topo,"Satelita":sat}).addTo(map);
-
-const layers = {zb:L.layerGroup().addTo(map), niz:L.layerGroup().addTo(map), gor:L.layerGroup().addTo(map), gr:L.layerGroup()};
-const entries = []; // {f, name, sub, latlng, target}
-
-// Pola łowisk pochodzą z edytowalnej bazy — escapujemy je przed wstawieniem do HTML.
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function popupHtml(title, tag, tagColor, body, rules, approx){
- let h = `<h3>${esc(title)}</h3><span class="tag" style="background:${tagColor}">${esc(tag)}</span>`;
- if(approx) h += `<div class="approx">⚠ lokalizacja przybliżona</div>`;
- h += `<div>${esc(body)}</div>`;
- if(rules) h += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
- h += `<div style="margin-top:6px"><a target="_blank" href="https://www.google.com/maps/dir/?api=1&destination=__LAT__,__LON__">🧭 Nawiguj</a></div>`;
- return h;
-}
-
-DATA.zb.forEach(z=>{
- const m = L.circleMarker(z.p, {radius:7, color:'#fff', weight:2, fillColor:'#1565c0', fillOpacity:.95});
- m.bindPopup(popupHtml(z.n, z.t + (z.ha!=='—' ? ` · ${z.ha} ha` : ''), '#1565c0', '', z.r, z.a).replace('__LAT__',z.p[0]).replace('__LON__',z.p[1]));
- m.addTo(layers.zb);
- entries.push({f:'zb', name:z.n, sub:`${z.t} · ${z.ha} ha`, latlng:z.p, target:m, zoom:14});
-});
-
-DATA.rivers.forEach(r=>{
- const col = r.c==='gor' ? '#2e7d32' : '#0288d1';
- const line = L.polyline(r.pts, {color:col, weight:r.c==='gor'?3:4, opacity:.85});
- line.bindPopup(popupHtml(r.n, r.c==='gor'?'kraina pstrąga i lipienia':'obwód '+r.o, col, r.d, r.r, 0).replace('__LAT__',r.pts[Math.floor(r.pts.length/2)][0]).replace('__LON__',r.pts[Math.floor(r.pts.length/2)][1]));
- line.addTo(layers[r.c==='gor'?'gor':'niz']);
- const mid = r.pts[Math.floor(r.pts.length/2)];
- entries.push({f:r.c==='gor'?'gor':'niz', name:r.n, sub:r.d.slice(0,70)+'…', latlng:mid, target:line, zoom:11});
-});
-
-DATA.granice.forEach(g=>{
- const m = L.circleMarker(g.p, {radius:5, color:'#fff', weight:1.5, fillColor:'#616161', fillOpacity:.95});
- m.bindPopup(`<h3>${esc(g.n)}</h3><div style="font-size:12px">${esc(g.d)}</div>`);
- m.addTo(layers.gr);
- entries.push({f:'gr', name:g.n, sub:g.d.slice(0,60)+'…', latlng:g.p, target:m, zoom:13});
-});
-
-const active = new Set(['zb','niz','gor']);
-const colors = {zb:'#1565c0', niz:'#0288d1', gor:'#2e7d32', gr:'#616161'};
-const listEl = document.getElementById('list'), countEl = document.getElementById('count');
-let userPos = null;
-
-function norm(s){return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/ł/g,'l');}
-function distKm(a,b){const R=6371,dLa=(b[0]-a[0])*Math.PI/180,dLo=(b[1]-a[1])*Math.PI/180,la1=a[0]*Math.PI/180,la2=b[0]*Math.PI/180;const x=Math.sin(dLa/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
-
-function render(){
- const q = norm(document.getElementById('search').value.trim());
- let items = entries.filter(e=>active.has(e.f) && (!q || norm(e.name+' '+e.sub).includes(q)));
- if(userPos) items.forEach(e=>e.km=distKm(userPos,e.latlng));
- if(userPos) items.sort((a,b)=>a.km-b.km);
- countEl.textContent = items.length + ' pozycji' + (userPos ? ' · posortowano wg odległości' : '');
- listEl.innerHTML = items.map((e,i)=>`<div class="item" data-i="${entries.indexOf(e)}"><span class="dot" style="background:${colors[e.f]}"></span><b>${esc(e.name)}</b>${e.km!==undefined?` <span style="color:#0d3b66;font-size:12px">· ${e.km.toFixed(1)} km</span>`:''}<div class="meta">${esc(e.sub)}</div></div>`).join('');
-}
-listEl.addEventListener('click',ev=>{
- const it = ev.target.closest('.item'); if(!it) return;
- const e = entries[+it.dataset.i];
- if(e.target.getBounds) map.fitBounds(e.target.getBounds(),{maxZoom:12});
- else map.setView(e.latlng, e.zoom);
- e.target.openPopup();
-});
-document.querySelectorAll('.chip').forEach(c=>c.addEventListener('click',()=>{
- const f=c.dataset.f;
- if(active.has(f)){active.delete(f);c.classList.remove('on');map.removeLayer(layers[f]);}
- else{active.add(f);c.classList.add('on');map.addLayer(layers[f]);}
- render();
-}));
-document.getElementById('search').addEventListener('input',render);
-document.getElementById('locbtn').addEventListener('click',()=>{
- navigator.geolocation.getCurrentPosition(p=>{
-  userPos=[p.coords.latitude,p.coords.longitude];
-  L.circleMarker(userPos,{radius:8,fillColor:'#e53935',color:'#fff',weight:2,fillOpacity:1}).addTo(map).bindPopup('Tu jesteś');
-  map.setView(userPos,11); render();
- },()=>alert('Nie udało się pobrać lokalizacji.'));
-});
-render();
-}
-</script>
-<div id="infomodal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center" onclick="this.style.display='none'">
-<div style="background:#fff;max-width:480px;margin:20px;padding:22px;border-radius:12px;font-size:13.5px;line-height:1.5" onclick="event.stopPropagation()">
+<div id="infomodal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
+<div style="background:#fff;max-width:480px;margin:20px;padding:22px;border-radius:12px;font-size:13.5px;line-height:1.5">
 <h2 style="font-size:16px;margin-bottom:10px">O tej mapie</h2>
 <p><b>Źródło danych o łowiskach:</b> „Wykaz wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania" — oficjalna książeczka Okręgu PZW Rzeszów na rok 2026 (<a href="https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku" target="_blank">otwórz wykaz na stronie PZW</a>).</p>
-<p style="margin-top:8px"><b>Podkład i geometrie:</b> OpenStreetMap (© autorzy OSM, ODbL). Lokalizacje części zbiorników są przybliżone (oznaczone ⚠), a granice obwodów na rzekach wyznaczono orientacyjnie.</p>
+<p style="margin-top:8px"><b>Podkład i geometrie:</b> Główny Urząd Geodezji i Kartografii — mapa topograficzna i ortofotomapa (usługi WMTS Geoportalu) oraz Baza Danych Obiektów Topograficznych BDOT10k (przebiegi rzek i kontury zbiorników); dane z państwowego zasobu geodezyjnego, bezpłatne do ponownego wykorzystania. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠), a granice obwodów na rzekach wyznaczono orientacyjnie.</p>
 <p style="margin-top:8px;color:#b26a00"><b>Uwaga:</b> mapa ma charakter poglądowy. Przed wędkowaniem zweryfikuj zasady w aktualnym zezwoleniu i wykazie PZW.</p>
 <p style="margin-top:8px"><b>Projekt open source:</b> <a href="https://github.com/korntech/mapa-wod-pzw-rzeszow" target="_blank">github.com/korntech/mapa-wod-pzw-rzeszow</a> — zauważyłeś(-aś) błąd? Zgłoś poprawkę.</p>
 <p style="margin-top:8px;color:#888;font-size:12px">Wygenerowano: czerwiec 2026.</p>
 </div></div>
-<script>document.getElementById('infobtn').onclick=()=>document.getElementById('infomodal').style.display='flex';</script>
+<script type="module" src="/src/main.js"></script>
 </body>
 </html>

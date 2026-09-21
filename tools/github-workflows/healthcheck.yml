@@ -1,0 +1,77 @@
+# Kontrola dostępności mapy i bazy co 6 godzin.
+#
+# Gdy strona albo baza nie odpowiada, workflow zakłada issue z etykietą „awaria”
+# (tylko jedno — jeśli otwarte już istnieje, dopisuje komentarz). Gdy wszystko wróci
+# do normy, issue zamyka się samo. Osoby obserwujące repozytorium dostają
+# powiadomienie e-mail z GitHuba — bez żadnej dodatkowej usługi.
+#
+# Uwaga: mapa publiczna działa ze snapshotu data.json także wtedy, gdy baza leży —
+# awaria bazy oznacza więc „panel operatora nie działa”, nie „mapa nie działa”.
+
+name: Healthcheck mapy i bazy
+
+on:
+  schedule:
+    - cron: '7 */6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sprawdź stronę i bazę
+        id: probe
+        shell: bash
+        run: |
+          set +e
+          SITE="https://korntech.github.io/mapa-wod-pzw-rzeszow/data.json"
+          URL=$(grep -oE "SUPABASE_URL: *'[^']+'" config.js | sed -E "s/.*'([^']+)'/\1/")
+          KEY=$(grep -oE "SUPABASE_ANON_KEY: *'[^']+'" config.js | sed -E "s/.*'([^']+)'/\1/")
+          fail=""
+          s=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$SITE")
+          [ "$s" = "200" ] || fail="$fail\n- Strona (GitHub Pages): HTTP $s"
+          b=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$URL/rest/v1/zbiorniki?select=id&limit=1" -H "apikey: $KEY" -H "Authorization: Bearer $KEY")
+          [ "$b" = "200" ] || fail="$fail\n- Baza (Supabase): HTTP $b — jeśli 5xx lub 0, projekt mógł zostać zapauzowany; wznów go w panelu Supabase"
+          echo "site=$s" >> "$GITHUB_OUTPUT"
+          echo "db=$b" >> "$GITHUB_OUTPUT"
+          if [ -n "$fail" ]; then
+            printf "failed=true\nreport<<EOF\n$(printf "$fail")\nEOF\n" >> "$GITHUB_OUTPUT"
+          else
+            echo "failed=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "strona: $s, baza: $b"
+
+      - name: Załóż lub uzupełnij issue o awarii
+        if: steps.probe.outputs.failed == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const report = `${{ steps.probe.outputs.report }}`;
+            const when = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'awaria', per_page: 1 });
+            const body = `Healthcheck z ${when} wykrył problem:\n${report}\n\nMapa publiczna działa ze snapshotu \`data.json\` niezależnie od bazy. Issue zamknie się samo, gdy kontrola przejdzie.`;
+            if (open.length) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: open[0].number, body: `Nadal nie działa (${when}):\n${report}` });
+            } else {
+              await github.rest.issues.create({ owner: context.repo.owner, repo: context.repo.repo, title: `Awaria: strona lub baza nie odpowiada (${when})`, body, labels: ['awaria'] });
+            }
+
+      - name: Zamknij issue, gdy wszystko działa
+        if: steps.probe.outputs.failed == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo, state: 'open', labels: 'awaria', per_page: 5 });
+            for (const i of open) {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: i.number, body: 'Kontrola przeszła — strona i baza odpowiadają. Zamykam.' });
+              await github.rest.issues.update({ owner: context.repo.owner, repo: context.repo.repo, issue_number: i.number, state: 'closed' });
+            }
