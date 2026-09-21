@@ -1,89 +1,109 @@
-/* Podkłady mapowe — usługi WMTS Głównego Urzędu Geodezji i Kartografii
- * (geoportal.gov.pl): mapa topograficzna BDOT10k i ortofotomapa lotnicza.
- *
- * Usługi GUGiK: "brak ograniczeń" w dostępie (ows:AccessConstraints),
- * korzystanie oznacza akceptację regulaminu Geoportalu. Wymagana atrybucja.
- *
- * Decyzja 2026-09-20: projekt korzysta wyłącznie z polskich źródeł państwowych.
- * Kafle zewnętrzne usunięto także z roli podkładu awaryjnego — ich regulamin
- * zabrania pobierania na zapas (co blokowałoby tryb offline), a mapa ma trafić
- * do Okręgu PZW jako narzędzie oficjalne. Podkładem awaryjnym jest druga usługa
- * GUGiK; gdy i ona nie odpowiada, mapa działa bez podkładu — same dane łowisk.
- */
+/* Podkłady mapowe z usług WMTS zdefiniowanych w config.json (sekcja basemaps). */
 import L from 'leaflet';
+import { BASEMAPS } from './config.js';
+import { CRS_CODE, TILE_SIZE, ZOOM } from './crs.js';
 
-export const ATTR_GUGIK = 'Podkład i geometrie: <a href="https://www.geoportal.gov.pl/" target="_blank" rel="noopener">GUGiK · BDOT10k</a>';
+const { serviceUrl, attribution, layers, fallbackAfterErrors, fallbackNotice } = BASEMAPS;
 
-// Buduje URL kafla w standardzie WMTS 1.0.0 (profil KVP) dla siatki EPSG:3857,
-// czyli tej samej, której domyślnie używa Leaflet — bez proj4leaflet.
-function wmts(url, layer, o = {}) {
-  const q = [
-    'SERVICE=WMTS', 'REQUEST=GetTile', 'VERSION=1.0.0',
-    'LAYER=' + layer,
-    'STYLE=' + (o.style || 'default'),
-    'FORMAT=' + (o.format || 'image/png'),
-    'TILEMATRIXSET=EPSG:3857',
-    'TILEMATRIX=EPSG:3857:{z}',
-    'TILEROW={y}', 'TILECOL={x}',
+export const ATTRIBUTION = `<a href="${attribution.url}" target="_blank" rel="noopener noreferrer">${attribution.text}</a>`;
+
+/** Adres kafla WMTS 1.0.0 (kodowanie KVP) dla podanej usługi i warstwy. */
+function tileUrl(def) {
+  const query = [
+    'SERVICE=WMTS',
+    'REQUEST=GetTile',
+    'VERSION=1.0.0',
+    'LAYER=' + encodeURIComponent(def.layer),
+    'STYLE=default',
+    'FORMAT=' + encodeURIComponent(def.format),
+    'TILEMATRIXSET=' + CRS_CODE,
+    'TILEMATRIX=' + CRS_CODE + ':{z}',
+    'TILEROW={y}',
+    'TILECOL={x}',
   ].join('&');
-  return L.tileLayer(url + '?' + q, {
-    attribution: o.attribution || ATTR_GUGIK,
-    minZoom: o.minZoom || 6,
-    maxZoom: o.maxZoom || 19,
-    maxNativeZoom: o.maxNativeZoom || 18,
-    // Geoportal bywa wolny — mniej równoległych żądań, mniej porzuconych kafli.
+  return serviceUrl + def.path + '?' + query;
+}
+
+/** Warstwa kafli dla jednej definicji podkładu. Zakres native dotyczy poziomów mapy;
+ *  zoomOffset przelicza poziom mapy na numer macierzy usługi. */
+function tileLayer(def) {
+  return L.tileLayer(tileUrl(def), {
+    attribution: ATTRIBUTION,
+    tileSize: TILE_SIZE,
+    zoomOffset: def.zoomOffset,
+    minNativeZoom: def.minNativeZoom,
+    maxNativeZoom: def.maxNativeZoom,
+    minZoom: ZOOM.min,
+    maxZoom: ZOOM.max,
     updateWhenIdle: true,
-    keepBuffer: 3,
+    keepBuffer: 2,
   });
 }
 
-// Przełącza na podkład awaryjny dopiero, gdy z usługi nie wczytał się ANI JEDEN
-// kafel — pojedyncze błędy na skraju zasięgu nie są awarią.
-function guard(primary, fallback, map, onSwitch) {
-  let loaded = 0, errors = 0, switched = false;
-  primary.on('tileload', () => { loaded++; });
+/** Podmienia warstwę na zapasową, gdy pierwsze żądania kafli kończą się błędem
+ *  i żaden kafel nie został wczytany. */
+function withFallback(map, primary, fallback, onSwitch) {
+  let loaded = 0,
+    errors = 0,
+    switched = false;
+  primary.on('tileload', () => {
+    loaded++;
+  });
   primary.on('tileerror', () => {
     errors++;
-    if (switched || loaded > 0 || errors < 6) return;
+    if (switched || loaded > 0 || errors < fallbackAfterErrors) return;
     switched = true;
-    if (map.hasLayer(primary)) { map.removeLayer(primary); map.addLayer(fallback); }
-    if (onSwitch) onSwitch();
+    if (map.hasLayer(primary)) {
+      map.removeLayer(primary);
+      map.addLayer(fallback);
+    }
+    onSwitch();
   });
 }
 
-function notice(map, text) {
-  const c = L.control({ position: 'bottomleft' });
-  c.onAdd = () => {
-    const d = L.DomUtil.create('div');
-    d.style.cssText = 'background:#fff8e1;border:1px solid #ffe082;border-radius:6px;' +
-      'padding:6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:260px;box-shadow:0 1px 4px rgba(0,0,0,.2)';
-    d.innerHTML = text;
-    L.DomEvent.disableClickPropagation(d);
-    return d;
+/** Zamykalny komunikat w rogu mapy. */
+function showNotice(map, text) {
+  const control = L.control({ position: 'bottomleft' });
+  control.onAdd = () => {
+    const box = L.DomUtil.create('div', 'pzw-notice');
+    box.style.cssText =
+      'background:#fff8e1;border:1px solid #ffe082;border-radius:6px;' +
+      'padding:6px 28px 6px 10px;font:12px/1.4 system-ui,sans-serif;max-width:250px;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.2)';
+    box.textContent = text;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Zamknij');
+    close.textContent = '×';
+    close.style.cssText =
+      'position:absolute;top:2px;right:4px;border:0;background:none;font-size:16px;cursor:pointer;color:#6d4c00';
+    close.onclick = () => control.remove();
+    box.appendChild(close);
+    L.DomEvent.disableClickPropagation(box);
+    return box;
   };
-  c.addTo(map);
+  control.addTo(map);
+  return control;
 }
 
-/* Dodaje podkłady do mapy i zwraca ich zestaw.
- * opts.def: 'topo' (domyślnie) albo 'orto' — warstwa włączona na starcie. */
-export function initBasemaps(map, opts = {}) {
-  // Mapa topograficzna z Bazy Danych Obiektów Topograficznych (BDOT10k).
-  const topo = wmts('https://mapy.geoportal.gov.pl/wss/service/WMTS/guest/wmts/BDOT10k', 'BDOT10k',
-    { format: 'image/png', maxNativeZoom: 18 });
-  // Ortofotomapa lotnicza (rozdzielczość standardowa) — parametry potwierdzone
-  // w GetCapabilities usługi: warstwa ORTOFOTOMAPA, EPSG:3857, poziomy 0–19.
-  const orto = wmts('https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution', 'ORTOFOTOMAPA',
-    { format: 'image/jpeg', maxNativeZoom: 19 });
+/**
+ * Dodaje do mapy podkłady z konfiguracji i przełącznik warstw.
+ * @param {L.Map} map
+ * @param {string} defaultId identyfikator podkładu włączonego na starcie
+ * @returns {Record<string, L.TileLayer>} podkłady wg identyfikatora
+ */
+export function initBasemaps(map, defaultId) {
+  const byId = {};
+  const control = {};
+  for (const def of layers) {
+    byId[def.id] = tileLayer(def);
+    control[def.title] = byId[def.id];
+  }
 
-  const def = opts.def === 'orto' ? orto : topo;
-  def.addTo(map);
+  const primary = byId[defaultId] || byId[layers[0].id];
+  const fallback = layers.map((d) => byId[d.id]).find((l) => l !== primary);
+  primary.addTo(map);
+  if (fallback) withFallback(map, primary, fallback, () => showNotice(map, fallbackNotice));
 
-  // Awaryjnie druga usługa GUGiK; gdy i ona milczy — mapa bez podkładu.
-  guard(def, def === topo ? orto : topo, map, () => {
-    notice(map, '⚠ Mapa topograficzna Geoportalu jest chwilowo niedostępna — ' +
-      'włączono ortofotomapę GUGiK. Dane łowisk pozostają aktualne.');
-  });
-
-  L.control.layers({ 'Mapa topograficzna': topo, 'Ortofotomapa': orto }, null, { position: 'topright' }).addTo(map);
-  return { topo, orto };
+  L.control.layers(control, null, { position: 'topright', collapsed: !L.Browser.mobile }).addTo(map);
+  return byId;
 }

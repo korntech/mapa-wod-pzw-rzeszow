@@ -1,14 +1,10 @@
-# Materiały źródłowe PZW — prawa autorskie Okręgu PZW Rzeszów, zostają tylko lokalnie
-wykaz-wod-pzw-okregu-w-rzeszowie.pdf
-wykaz-wod-ocr.txt
-
-# Lokalne artefakty robocze
-mapa-pzw-netlify.zip
-mapa-wod-pzw-rzeszow.html
-PROMPT.md
-
-.DS_Store
-
-# Vite / npm
+# Zależności i build
 node_modules/
 dist/
+
+# Materiały robocze i dokumenty wewnętrzne (poza repozytorium)
+_prywatne/
+
+# Ustawienia narzędzi lokalnych
+.claude/
+.DS_Store

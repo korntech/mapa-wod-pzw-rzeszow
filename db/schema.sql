@@ -1,4 +1,4 @@
--- Schemat bazy panelu operatora PZW Rzeszów (idempotentny).
+-- Schemat bazy (idempotentny): tabele łowisk, allow-lista operatorów, RLS.
 
 create table if not exists public.zbiorniki (
   id          bigint generated always as identity primary key,
@@ -55,18 +55,15 @@ create trigger trg_granice_updated_at
   before update on public.granice
   for each row execute function public.set_updated_at();
 
--- Allow-lista operatorów (po e-mailu). Zapis do zbiorników mają tylko konta,
--- których e-mail jest tu wpisany — niezależnie od ustawień rejestracji w Supabase.
+-- Allow-lista operatorów (po e-mailu): zapis w tabelach łowisk mają tylko wpisane konta.
 create table if not exists public.operators (
   email     text primary key,
   added_at  timestamptz not null default now()
 );
 alter table public.operators enable row level security;
--- Brak polityk = brak bezpośredniego dostępu (anon/authenticated nie czytają tej tabeli);
--- zarządzasz nią z SQL Editor (rola omijająca RLS).
+revoke all on table public.operators from anon, authenticated;
 
--- Czy zalogowany użytkownik jest operatorem. SECURITY DEFINER omija RLS na operators,
--- więc allow-lista nie jest wystawiona na zewnątrz.
+-- Czy zalogowany użytkownik jest na allow-liście (SECURITY DEFINER: odczyt operators mimo RLS).
 create or replace function public.is_operator()
 returns boolean
 language sql
@@ -78,6 +75,9 @@ as $$
     where email = (auth.jwt() ->> 'email')
   );
 $$;
+revoke execute on function public.is_operator() from public, anon;
+grant  execute on function public.is_operator() to authenticated;
+revoke execute on function public.set_updated_at() from public, anon, authenticated;
 
 -- Row Level Security: publiczny odczyt, zapis tylko dla operatorów z allow-listy.
 alter table public.zbiorniki enable row level security;

@@ -10,15 +10,20 @@
     "preview": "vite preview",
     "export": "node tools/snapshot/export.mjs",
     "validate": "node tools/snapshot/validate.mjs",
-    "check": "node --check config.js && node --check tools/snapshot/export.mjs && node --check tools/snapshot/validate.mjs && npm run validate"
+    "seed-sql": "node tools/snapshot/seed-sql.mjs",
+    "check": "node --check vite.config.js && for f in tools/snapshot/*.mjs; do node --check \"$f\" || exit 1; done && npm run validate"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.18.3",
     "@supabase/supabase-js": "^2.45.0",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "proj4": "^2.22.0",
+    "proj4leaflet": "^1.0.2"
   },
   "devDependencies": {
     "vite": "^6.0.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

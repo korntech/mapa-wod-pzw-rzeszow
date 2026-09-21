@@ -1,0 +1,15 @@
+# Cotygodniowe propozycje aktualizacji zależności npm i akcji GitHub (pull requesty).
+
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm:
+        patterns: ['*']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

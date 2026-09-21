@@ -9,6 +9,7 @@
 *{box-sizing:border-box;margin:0}
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;height:100vh;display:flex;flex-direction:column}
 header{background:#0d3b66;color:#fff;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:1001}
+@media(max-width:720px){header{padding:6px 10px;gap:8px}header h1{font-size:15px}header small{display:none}}
 header h1{font-size:16px;font-weight:600}
 header small{opacity:.75}
 #main{flex:1;display:flex;min-height:0}
@@ -17,6 +18,8 @@ header small{opacity:.75}
 #search{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px;margin-bottom:8px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid #bbb;background:#fff;cursor:pointer;user-select:none}
+@media(pointer:coarse){.chip{padding:9px 14px;font-size:13px}#locbtn,#infobtn{padding:9px 14px}header a{padding:8px 0}}
+.pzw-notice{max-width:min(250px,60vw)!important}
 .chip.on{color:#fff;border-color:transparent}
 .chip[data-f="zb"].on{background:var(--blue)}
 .chip[data-f="niz"].on{background:#0288d1}
@@ -38,7 +41,7 @@ header small{opacity:.75}
 #count{font-size:12px;color:#666;padding:4px 12px;border-bottom:1px solid #ddd}
 @media(max-width:720px){
  #main{flex-direction:column}
- #side{width:100%;height:42%;order:2;border-right:none;border-top:1px solid #ddd}
+ #side{width:100%;height:46%;order:2;border-right:none;border-top:1px solid #ddd}
  #map{order:1}
 }
 </style>
@@ -48,9 +51,9 @@ header small{opacity:.75}
  <h1>🎣 Wody PZW — Okręg Rzeszów</h1>
  <small>wg wykazu 2026 · dane i podkład: GUGiK</small>
  <button id="locbtn">📍 Najbliżej mnie</button>
- <a href="https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku" target="_blank" style="color:#ffd54f;font-size:13px;font-weight:600;text-decoration:none">📄 Wykaz źródłowy (PZW)</a>
+ <a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer" style="color:#ffd54f;font-size:13px;font-weight:600;text-decoration:none">📄 Wykaz źródłowy (PZW)</a>
  <button id="infobtn" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">ℹ️ O mapie</button>
- <a href="admin.html" style="margin-left:auto;color:#cfe3f5;font-size:12.5px;text-decoration:none;opacity:.85">🔑 Operator</a>
+ <a href="admin.html" style="margin-left:auto;color:#e3eef8;font-size:12.5px;text-decoration:none">🔑 Operator</a>
 </header>
 <div id="main">
  <div id="side">
@@ -71,11 +74,11 @@ header small{opacity:.75}
 <div id="infomodal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:2000;align-items:center;justify-content:center">
 <div style="background:#fff;max-width:480px;margin:20px;padding:22px;border-radius:12px;font-size:13.5px;line-height:1.5">
 <h2 style="font-size:16px;margin-bottom:10px">O tej mapie</h2>
-<p><b>Źródło danych o łowiskach:</b> „Wykaz wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania" — oficjalna książeczka Okręgu PZW Rzeszów na rok 2026 (<a href="https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku" target="_blank">otwórz wykaz na stronie PZW</a>).</p>
+<p><b>Źródło danych o łowiskach:</b> „Wykaz wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania" — oficjalna książeczka Okręgu PZW Rzeszów na rok 2026 (<a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer">otwórz wykaz na stronie PZW</a>).</p>
 <p style="margin-top:8px"><b>Podkład i geometrie:</b> Główny Urząd Geodezji i Kartografii — mapa topograficzna i ortofotomapa (usługi WMTS Geoportalu) oraz Baza Danych Obiektów Topograficznych BDOT10k (przebiegi rzek i kontury zbiorników); dane z państwowego zasobu geodezyjnego, bezpłatne do ponownego wykorzystania. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠), a granice obwodów na rzekach wyznaczono orientacyjnie.</p>
 <p style="margin-top:8px;color:#b26a00"><b>Uwaga:</b> mapa ma charakter poglądowy. Przed wędkowaniem zweryfikuj zasady w aktualnym zezwoleniu i wykazie PZW.</p>
-<p style="margin-top:8px"><b>Projekt open source:</b> <a href="https://github.com/korntech/mapa-wod-pzw-rzeszow" target="_blank">github.com/korntech/mapa-wod-pzw-rzeszow</a> — zauważyłeś(-aś) błąd? Zgłoś poprawkę.</p>
-<p style="margin-top:8px;color:#888;font-size:12px">Wygenerowano: czerwiec 2026.</p>
+<p style="margin-top:8px"><b>Projekt open source:</b> <a data-link="repo" href="#" target="_blank" rel="noopener noreferrer">repozytorium na GitHubie</a> — zauważyłeś(-aś) błąd? Zgłoś poprawkę.</p>
+<p id="stan-danych" style="margin-top:8px;color:#888;font-size:12px">Dane odświeżane co noc z bazy Okręgu.</p>
 </div></div>
 <script type="module" src="/src/main.js"></script>
 </body>

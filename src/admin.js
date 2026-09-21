@@ -1,4 +1,4 @@
-/* Panel operatora — logika strony admin.html. */
+/* Panel operatora (admin.html). */
 import 'leaflet/dist/leaflet.css';
 import '@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css';
 import L from 'leaflet';
@@ -6,241 +6,408 @@ import '@geoman-io/leaflet-geoman-free';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { PZW_CONFIG } from '../config.js';
+import { BASEMAPS, LINKS, SUPABASE } from './config.js';
+import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
-import { getSupabase } from './data.js';
+import { getSupabase, esc } from './data.js';
 
-// Pod bundlerem Leaflet nie znajduje domyślnych ikon pinezki — wskazujemy je jawnie.
+// Jawne ścieżki ikon znacznika (Leaflet nie wykrywa ich pod bundlerem).
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-const CFG = PZW_CONFIG || {};
-const $ = id => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 const TYPES = {
- zb:     { table:'zbiorniki', kind:'point', add:'➕ Dodaj zbiornik',  color:'#1565c0' },
- rivers: { table:'rivers',    kind:'line',  add:'✏️ Narysuj nową rzekę', color:'#0288d1' },
- gr:     { table:'granice',   kind:'point', add:'➕ Dodaj granicę',   color:'#616161' }
+  zb: { table: SUPABASE.tables.zbiorniki, kind: 'point', add: '➕ Dodaj zbiornik', color: '#1565c0' },
+  rivers: { table: SUPABASE.tables.rivers, kind: 'line', add: '✏️ Narysuj nową rzekę', color: '#0288d1' },
+  gr: { table: SUPABASE.tables.granice, kind: 'point', add: '➕ Dodaj granicę', color: '#616161' },
 };
-let sb=null, map, layers={}, data={zb:[],rivers:[],granice:[]};
-let current='zb', sel=null, editLayer=null, addMode=false, geomEditing=false;
+let sb = null,
+  map,
+  layers = {},
+  data = { zb: [], rivers: [], granice: [] };
+let current = 'zb',
+  sel = null,
+  editLayer = null,
+  addMode = false,
+  geomEditing = false;
 
-const KEY = {zb:'zb', rivers:'rivers', gr:'granice'}; // klucz w obiekcie `data`
-function toast(t){ const e=$('toast'); e.textContent=t; e.classList.add('show'); setTimeout(()=>e.classList.remove('show'),2200); }
-function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-function pts2arr(ll){ return ll.map(p=>[+p.lat.toFixed(5), +p.lng.toFixed(5)]); }
-
-if(!CFG.SUPABASE_URL || !CFG.SUPABASE_ANON_KEY){
- $('overlay').innerHTML = '<div class="card"><h2>Brak konfiguracji</h2><p>Uzupełnij <b>config.js</b> wartościami z panelu Supabase (Project URL i klucz anon), aby włączyć panel operatora.</p></div>';
-} else {
- sb = getSupabase();
- initMap();
- sb.auth.getSession().then(({data})=>{ if(data.session) onLogin(data.session); });
+const KEY = { zb: 'zb', rivers: 'rivers', gr: 'granice' }; // klucz w obiekcie `data`
+function toast(t) {
+  const e = $('toast');
+  e.textContent = t;
+  e.classList.add('show');
+  setTimeout(() => e.classList.remove('show'), 2200);
+}
+function pts2arr(ll) {
+  return ll.map((p) => [+p.lat.toFixed(5), +p.lng.toFixed(5)]);
 }
 
-function initMap(){
- map = L.map('map').setView([50.08, 21.95], 9);
- map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
- // Operator ustawia pinezki na ortofotomapie — start na zdjęciach lotniczych.
- initBasemaps(map, {def:'orto'});
- layers = { zb:L.layerGroup().addTo(map), rivers:L.layerGroup().addTo(map), gr:L.layerGroup().addTo(map) };
- map.on('click', e=>{ if(addMode) placePoint(e.latlng); });
- map.on('pm:create', e=>{ // ukończono rysowanie nowej rzeki
-  const ll = e.layer.getLatLngs();
-  e.layer.remove();
-  map.pm.disableDraw();
-  newRiver(pts2arr(ll));
- });
+sb = getSupabase();
+if (!sb) {
+  $('overlay').innerHTML =
+    '<div class="card"><h2>Brak konfiguracji</h2><p>Uzupełnij sekcję <b>supabase</b> w pliku <b>config.json</b> (adres projektu i klucz publiczny), aby włączyć panel operatora.</p></div>';
+} else {
+  initMap();
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) onLogin(data.session);
+  });
+}
+
+function initMap() {
+  map = L.map('map', { crs, minZoom: ZOOM.min, maxZoom: ZOOM.max }).setView(CENTER, ZOOM.okreg);
+  map.attributionControl.setPrefix(
+    `<a href="${LINKS.leaflet}" target="_blank" rel="noopener noreferrer">Leaflet</a>`
+  );
+  initBasemaps(map, BASEMAPS.default.admin);
+  layers = {
+    zb: L.layerGroup().addTo(map),
+    rivers: L.layerGroup().addTo(map),
+    gr: L.layerGroup().addTo(map),
+  };
+  map.on('click', (e) => {
+    if (addMode) placePoint(e.latlng);
+  });
+  map.on('pm:create', (e) => {
+    // ukończono rysowanie nowej rzeki
+    const ll = e.layer.getLatLngs();
+    e.layer.remove();
+    map.pm.disableDraw();
+    newRiver(pts2arr(ll));
+  });
 }
 
 // --- LOGOWANIE ---
-$('loginform').addEventListener('submit', async ev=>{
- ev.preventDefault();
- $('loginbtn').disabled=true; $('loginmsg').className='msg'; $('loginmsg').textContent='Logowanie…';
- const { data, error } = await sb.auth.signInWithPassword({ email:$('l_email').value.trim(), password:$('l_pass').value });
- $('loginbtn').disabled=false;
- if(error){ $('loginmsg').className='msg err'; $('loginmsg').textContent='Błąd logowania: '+error.message; return; }
- onLogin(data.session);
+$('loginform').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('loginbtn').disabled = true;
+  $('loginmsg').className = 'msg';
+  $('loginmsg').textContent = 'Logowanie…';
+  const { data, error } = await sb.auth.signInWithPassword({
+    email: $('l_email').value.trim(),
+    password: $('l_pass').value,
+  });
+  $('loginbtn').disabled = false;
+  if (error) {
+    $('loginmsg').className = 'msg err';
+    $('loginmsg').textContent = 'Błąd logowania: ' + tlumaczBlad(error.message);
+    return;
+  }
+  onLogin(data.session);
 });
-function onLogin(session){ $('overlay').classList.add('hidden'); $('email').textContent=session.user.email; setType('zb'); loadAll(); }
-$('logout').addEventListener('click', async ()=>{ await sb.auth.signOut(); location.reload(); });
+function tlumaczBlad(m) {
+  const T = {
+    'Invalid login credentials': 'nieprawidłowy e-mail lub hasło',
+    'Email not confirmed': 'adres e-mail nie został potwierdzony',
+    'Too many requests': 'zbyt wiele prób — odczekaj chwilę',
+    'Failed to fetch': 'brak połączenia z bazą',
+  };
+  for (const k in T) if ((m || '').includes(k)) return T[k];
+  return m;
+}
+function onLogin(session) {
+  document.body.classList.add('logged');
+  $('overlay').classList.add('hidden');
+  $('email').textContent = session.user.email;
+  setType('zb');
+  loadAll();
+}
+$('logout').addEventListener('click', async () => {
+  await sb.auth.signOut();
+  location.reload();
+});
 
 // --- DANE ---
-async function loadAll(){
- const [zb, rivers, gr] = await Promise.all([
-  sb.from('zbiorniki').select('*').order('n'),
-  sb.from('rivers').select('*').order('n'),
-  sb.from('granice').select('*').order('n')
- ]);
- const err = zb.error||rivers.error||gr.error;
- if(err){ toast('Błąd wczytywania: '+err.message); return; }
- data = { zb:zb.data, rivers:rivers.data, granice:gr.data };
- renderMarkers(); renderList();
+async function loadAll() {
+  const [zb, rivers, gr] = await Promise.all([
+    sb.from(TYPES.zb.table).select('*').order('n'),
+    sb.from(TYPES.rivers.table).select('*').order('n'),
+    sb.from(TYPES.gr.table).select('*').order('n'),
+  ]);
+  const err = zb.error || rivers.error || gr.error;
+  if (err) {
+    toast('Błąd wczytywania: ' + err.message);
+    return;
+  }
+  data = { zb: zb.data, rivers: rivers.data, granice: gr.data };
+  renderMarkers();
+  renderList();
 }
 
-function renderMarkers(){
- Object.values(layers).forEach(l=>l.clearLayers());
- data.zb.forEach(z=>{
-  L.circleMarker([z.lat,z.lon],{radius:7,color:'#fff',weight:2,fillColor:z.a?'#b26a00':'#1565c0',fillOpacity:.95})
-   .on('click',()=>select('zb',z.id)).addTo(layers.zb);
- });
- data.granice.forEach(g=>{
-  L.circleMarker([g.lat,g.lon],{radius:5,color:'#fff',weight:1.5,fillColor:'#616161',fillOpacity:.95})
-   .on('click',()=>select('gr',g.id)).addTo(layers.gr);
- });
- data.rivers.forEach(r=>{
-  const col = r.c==='gor'?'#2e7d32':'#0288d1';
-  L.polyline(r.pts||[],{color:col,weight:r.c==='gor'?3:4,opacity:.85})
-   .on('click',()=>select('rivers',r.id)).addTo(layers.rivers);
- });
+function renderMarkers() {
+  Object.values(layers).forEach((l) => l.clearLayers());
+  data.zb.forEach((z) => {
+    L.circleMarker([z.lat, z.lon], {
+      radius: 7,
+      color: '#fff',
+      weight: 2,
+      fillColor: z.a ? '#b26a00' : '#1565c0',
+      fillOpacity: 0.95,
+    })
+      .on('click', () => select('zb', z.id))
+      .addTo(layers.zb);
+  });
+  data.granice.forEach((g) => {
+    L.circleMarker([g.lat, g.lon], {
+      radius: 5,
+      color: '#fff',
+      weight: 1.5,
+      fillColor: '#616161',
+      fillOpacity: 0.95,
+    })
+      .on('click', () => select('gr', g.id))
+      .addTo(layers.gr);
+  });
+  data.rivers.forEach((r) => {
+    const col = r.c === 'gor' ? '#2e7d32' : '#0288d1';
+    L.polyline(r.pts || [], { color: col, weight: r.c === 'gor' ? 3 : 4, opacity: 0.85 })
+      .on('click', () => select('rivers', r.id))
+      .addTo(layers.rivers);
+  });
 }
 
-function rows(){ return data[KEY[current]]; }
+function rows() {
+  return data[KEY[current]];
+}
 
-function renderList(){
- const q = $('search').value.trim().toLowerCase();
- const f = rows().filter(o=> !q || (o.n+' '+(o.t||'')+' '+(o.o||'')).toLowerCase().includes(q));
- const labels = {zb:'zbiorników', rivers:'rzek', gr:'granic'};
- $('count').textContent = f.length+' '+labels[current]+(q?` (z ${rows().length})`:'');
- $('list').innerHTML = f.map(o=>{
-  let meta='';
-  if(current==='zb') meta = `${esc(o.t||'')} · ${esc(o.ha||'—')} ha`;
-  else if(current==='rivers') meta = `${o.c==='gor'?'kraina pstrąga':'nizinna'}${o.o?' · '+esc(o.o):''} · ${(o.pts||[]).length} pkt`;
-  else meta = esc((o.d||'').slice(0,60));
-  const warn = (current==='zb'&&o.a)?' <span class="warn">⚠</span>':'';
-  return `<div class="item${sel&&o.id===sel.id?' sel':''}" data-id="${o.id}"><b>${esc(o.n)}</b>${warn}<div class="meta">${meta}</div></div>`;
- }).join('');
+function renderList() {
+  const q = $('search').value.trim().toLowerCase();
+  const f = rows().filter(
+    (o) => !q || (o.n + ' ' + (o.t || '') + ' ' + (o.o || '')).toLowerCase().includes(q)
+  );
+  const labels = { zb: 'zbiorników', rivers: 'rzek', gr: 'granic' };
+  $('count').textContent = f.length + ' ' + labels[current] + (q ? ` (z ${rows().length})` : '');
+  $('list').innerHTML = f
+    .map((o) => {
+      let meta = '';
+      if (current === 'zb') meta = `${esc(o.t || '')} · ${esc(o.ha || '—')} ha`;
+      else if (current === 'rivers')
+        meta = `${o.c === 'gor' ? 'kraina pstrąga' : 'nizinna'}${o.o ? ' · ' + esc(o.o) : ''} · ${(o.pts || []).length} pkt`;
+      else meta = esc((o.d || '').slice(0, 60));
+      const warn = current === 'zb' && o.a ? ' <span class="warn">⚠</span>' : '';
+      return `<div class="item${sel && o.id === sel.id ? ' sel' : ''}" data-id="${o.id}"><b>${esc(o.n)}</b>${warn}<div class="meta">${meta}</div></div>`;
+    })
+    .join('');
 }
 $('search').addEventListener('input', renderList);
-$('list').addEventListener('click', e=>{ const it=e.target.closest('.item'); if(it) select(current, +it.dataset.id); });
+$('list').addEventListener('click', (e) => {
+  const it = e.target.closest('.item');
+  if (it) select(current, +it.dataset.id);
+});
 
 // --- ZAKŁADKI ---
-function setType(t){
- cancelEdit();
- current=t;
- document.querySelectorAll('#tabs .tab').forEach(el=>el.classList.toggle('on', el.dataset.type===t));
- $('addbtn').textContent = TYPES[t].add;
- renderList();
+function setType(t) {
+  cancelEdit();
+  current = t;
+  document.querySelectorAll('#tabs .tab').forEach((el) => el.classList.toggle('on', el.dataset.type === t));
+  $('addbtn').textContent = TYPES[t].add;
+  renderList();
 }
-document.querySelectorAll('#tabs .tab').forEach(el=>el.addEventListener('click',()=>setType(el.dataset.type)));
+document
+  .querySelectorAll('#tabs .tab')
+  .forEach((el) => el.addEventListener('click', () => setType(el.dataset.type)));
 
 // --- WYBÓR / EDYCJA ---
-function select(type, id){
- cancelEdit();
- if(type!==current) setType(type);
- const o = rows().find(x=>x.id===id); if(!o) return;
- sel = o;
- fillForm(type, o, 'Edycja');
- if(TYPES[type].kind==='point'){
-  editLayer = L.marker([o.lat,o.lon],{draggable:true}).addTo(map);
-  editLayer.on('drag', ()=>{ const p=editLayer.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); if(type==='zb') $('f_a').checked=false; });
-  map.setView([o.lat,o.lon], Math.max(map.getZoom(),14));
- } else {
-  const col = o.c==='gor'?'#2e7d32':'#0288d1';
-  editLayer = L.polyline(o.pts||[],{color:col,weight:5,opacity:.95}).addTo(map);
-  if((o.pts||[]).length) map.fitBounds(editLayer.getBounds(),{maxZoom:13});
-  updateGeomInfo();
- }
- renderList();
- $('editor').classList.add('open');
+function select(type, id) {
+  cancelEdit();
+  if (type !== current) setType(type);
+  const o = rows().find((x) => x.id === id);
+  if (!o) return;
+  sel = o;
+  fillForm(type, o, 'Edycja');
+  if (TYPES[type].kind === 'point') {
+    editLayer = L.marker([o.lat, o.lon], { draggable: true }).addTo(map);
+    editLayer.on('drag', () => {
+      const p = editLayer.getLatLng();
+      $('f_lat').value = p.lat.toFixed(5);
+      $('f_lon').value = p.lng.toFixed(5);
+      if (type === 'zb') $('f_a').checked = false;
+    });
+    map.setView([o.lat, o.lon], Math.max(map.getZoom(), ZOOM.zbiornik));
+  } else {
+    const col = o.c === 'gor' ? '#2e7d32' : '#0288d1';
+    editLayer = L.polyline(o.pts || [], { color: col, weight: 5, opacity: 0.95 }).addTo(map);
+    if ((o.pts || []).length) map.fitBounds(editLayer.getBounds(), { maxZoom: ZOOM.granica });
+    updateGeomInfo();
+  }
+  renderList();
+  $('editor').classList.add('open');
 }
 
-function fillForm(type, o, title){
- $('editor').dataset.type = type;
- $('etitle').textContent = title;
- $('f_n').value=o.n||'';
- $('f_ha').value=o.ha||''; $('f_t').value=o.t||''; $('f_r').value=o.r||''; $('f_a').checked=!!o.a;
- $('f_c').value=o.c||'niz'; $('f_o').value=o.o||''; $('f_d').value=o.d||'';
- if(type!=='rivers'){ $('f_lat').value=o.lat??''; $('f_lon').value=o.lon??''; }
- $('edel').style.display = o.id ? '' : 'none';
+function fillForm(type, o, title) {
+  $('editor').dataset.type = type;
+  $('etitle').textContent = title;
+  $('f_n').value = o.n || '';
+  $('f_ha').value = o.ha || '';
+  $('f_t').value = o.t || '';
+  $('f_r').value = o.r || '';
+  $('f_a').checked = !!o.a;
+  $('f_c').value = o.c || 'niz';
+  $('f_o').value = o.o || '';
+  $('f_d').value = o.d || '';
+  if (type !== 'rivers') {
+    $('f_lat').value = o.lat ?? '';
+    $('f_lon').value = o.lon ?? '';
+  }
+  $('edel').style.display = o.id ? '' : 'none';
 }
 
 // --- GEOMETRIA RZEK ---
-$('geomedit').addEventListener('click', ()=>{
- if(!editLayer) return;
- if(geomEditing){ editLayer.pm.disable(); geomEditing=false; }
- else { editLayer.pm.enable({allowSelfIntersection:true}); geomEditing=true; }
- $('geombox').classList.toggle('editing', geomEditing);
- $('geomedit').textContent = geomEditing ? '✅ Zakończ edycję kształtu' : '✏️ Edytuj kształt linii';
- updateGeomInfo();
+$('geomedit').addEventListener('click', () => {
+  if (!editLayer) return;
+  if (geomEditing) {
+    editLayer.pm.disable();
+    geomEditing = false;
+  } else {
+    editLayer.pm.enable({ allowSelfIntersection: true });
+    geomEditing = true;
+  }
+  $('geombox').classList.toggle('editing', geomEditing);
+  $('geomedit').textContent = geomEditing ? '✅ Zakończ edycję kształtu' : '✏️ Edytuj kształt linii';
+  updateGeomInfo();
 });
-function updateGeomInfo(){
- if(!editLayer || current!=='rivers') return;
- const n = (editLayer.getLatLngs()||[]).length;
- $('geominfo').textContent = geomEditing
-  ? `${n} punktów. Przeciągaj wierzchołki, klikaj środki krawędzi aby dodać, prawym/Alt+klik aby usunąć.`
-  : `${n} punktów. Kliknij, aby edytować przebieg linii.`;
+function updateGeomInfo() {
+  if (!editLayer || current !== 'rivers') return;
+  const n = (editLayer.getLatLngs() || []).length;
+  $('geominfo').textContent = geomEditing
+    ? `${n} punktów. Przeciągaj wierzchołki, klikaj środki krawędzi aby dodać, prawym/Alt+klik aby usunąć.`
+    : `${n} punktów. Kliknij, aby edytować przebieg linii.`;
 }
 
 // --- DODAWANIE ---
-$('addbtn').addEventListener('click', ()=>{
- cancelEdit();
- if(TYPES[current].kind==='line'){
-  toast('Klikaj punkty na mapie; dwuklik kończy rysowanie');
-  map.pm.enableDraw('Line', {finishOn:'dblclick'});
- } else {
-  addMode=true; $('addbtn').textContent='📍 Kliknij na mapie…';
- }
+$('addbtn').addEventListener('click', () => {
+  cancelEdit();
+  if (TYPES[current].kind === 'line') {
+    toast('Klikaj punkty na mapie; dwuklik kończy rysowanie');
+    map.pm.enableDraw('Line', { finishOn: 'dblclick' });
+  } else {
+    addMode = true;
+    $('addbtn').textContent = '📍 Kliknij na mapie…';
+  }
 });
-function placePoint(latlng){
- addMode=false; $('addbtn').textContent=TYPES[current].add;
- sel=null;
- editLayer = L.marker(latlng,{draggable:true}).addTo(map);
- editLayer.on('drag', ()=>{ const p=editLayer.getLatLng(); $('f_lat').value=p.lat.toFixed(5); $('f_lon').value=p.lng.toFixed(5); });
- fillForm(current, {lat:latlng.lat.toFixed(5), lon:latlng.lng.toFixed(5)}, current==='zb'?'Nowy zbiornik':'Nowa granica');
- $('editor').classList.add('open');
+function placePoint(latlng) {
+  addMode = false;
+  $('addbtn').textContent = TYPES[current].add;
+  sel = null;
+  editLayer = L.marker(latlng, { draggable: true }).addTo(map);
+  editLayer.on('drag', () => {
+    const p = editLayer.getLatLng();
+    $('f_lat').value = p.lat.toFixed(5);
+    $('f_lon').value = p.lng.toFixed(5);
+  });
+  fillForm(
+    current,
+    { lat: latlng.lat.toFixed(5), lon: latlng.lng.toFixed(5) },
+    current === 'zb' ? 'Nowy zbiornik' : 'Nowa granica'
+  );
+  $('editor').classList.add('open');
 }
-function newRiver(arr){
- sel=null;
- editLayer = L.polyline(arr,{color:'#0288d1',weight:5,opacity:.95}).addTo(map);
- fillForm('rivers', {pts:arr}, 'Nowa rzeka');
- updateGeomInfo();
- $('editor').classList.add('open');
+function newRiver(arr) {
+  sel = null;
+  editLayer = L.polyline(arr, { color: '#0288d1', weight: 5, opacity: 0.95 }).addTo(map);
+  fillForm('rivers', { pts: arr }, 'Nowa rzeka');
+  updateGeomInfo();
+  $('editor').classList.add('open');
 }
 
 // --- ZAPIS ---
-$('esave').addEventListener('click', async ()=>{
- if(!$('f_n').value.trim()){ toast('Podaj nazwę'); return; }
- let rec;
- if(current==='zb'){
-  const lat=parseFloat($('f_lat').value), lon=parseFloat($('f_lon').value);
-  if(isNaN(lat)||isNaN(lon)){ toast('Niepoprawne współrzędne'); return; }
-  rec = { n:$('f_n').value.trim(), ha:$('f_ha').value.trim()||'—', t:$('f_t').value.trim(), r:$('f_r').value.trim(), a:$('f_a').checked?1:0, lat, lon };
- } else if(current==='gr'){
-  const lat=parseFloat($('f_lat').value), lon=parseFloat($('f_lon').value);
-  if(isNaN(lat)||isNaN(lon)){ toast('Niepoprawne współrzędne'); return; }
-  rec = { n:$('f_n').value.trim(), d:$('f_d').value.trim(), lat, lon };
- } else {
-  const arr = editLayer ? pts2arr(editLayer.getLatLngs()) : [];
-  if(arr.length<2){ toast('Linia musi mieć min. 2 punkty'); return; }
-  rec = { n:$('f_n').value.trim(), c:$('f_c').value, o:$('f_o').value.trim(), d:$('f_d').value.trim(), r:$('f_r').value.trim(), pts:arr };
- }
- const tbl = TYPES[current].table;
- $('esave').disabled=true;
- let error;
- if(sel && sel.id){ ({error} = await sb.from(tbl).update(rec).eq('id',sel.id)); }
- else { ({error} = await sb.from(tbl).insert(rec)); }
- $('esave').disabled=false;
- if(error){ toast('Błąd zapisu: '+error.message); return; }
- toast('Zapisano'); cancelEdit(); loadAll();
+$('esave').addEventListener('click', async () => {
+  if (!$('f_n').value.trim()) {
+    toast('Podaj nazwę');
+    return;
+  }
+  let rec;
+  if (current === 'zb') {
+    const lat = parseFloat($('f_lat').value),
+      lon = parseFloat($('f_lon').value);
+    if (isNaN(lat) || isNaN(lon)) {
+      toast('Niepoprawne współrzędne');
+      return;
+    }
+    rec = {
+      n: $('f_n').value.trim(),
+      ha: $('f_ha').value.trim() || '—',
+      t: $('f_t').value.trim(),
+      r: $('f_r').value.trim(),
+      a: $('f_a').checked ? 1 : 0,
+      lat,
+      lon,
+    };
+  } else if (current === 'gr') {
+    const lat = parseFloat($('f_lat').value),
+      lon = parseFloat($('f_lon').value);
+    if (isNaN(lat) || isNaN(lon)) {
+      toast('Niepoprawne współrzędne');
+      return;
+    }
+    rec = { n: $('f_n').value.trim(), d: $('f_d').value.trim(), lat, lon };
+  } else {
+    const arr = editLayer ? pts2arr(editLayer.getLatLngs()) : [];
+    if (arr.length < 2) {
+      toast('Linia musi mieć min. 2 punkty');
+      return;
+    }
+    rec = {
+      n: $('f_n').value.trim(),
+      c: $('f_c').value,
+      o: $('f_o').value.trim(),
+      d: $('f_d').value.trim(),
+      r: $('f_r').value.trim(),
+      pts: arr,
+    };
+  }
+  const tbl = TYPES[current].table;
+  $('esave').disabled = true;
+  let error;
+  if (sel && sel.id) {
+    ({ error } = await sb.from(tbl).update(rec).eq('id', sel.id));
+  } else {
+    ({ error } = await sb.from(tbl).insert(rec));
+  }
+  $('esave').disabled = false;
+  if (error) {
+    toast('Błąd zapisu: ' + error.message);
+    return;
+  }
+  toast('Zapisano');
+  cancelEdit();
+  loadAll();
 });
 
 // --- USUWANIE ---
-$('edel').addEventListener('click', async ()=>{
- if(!sel || !sel.id) return;
- if(!confirm('Usunąć ten obiekt? Operacji nie można cofnąć.')) return;
- const { error } = await sb.from(TYPES[current].table).delete().eq('id',sel.id);
- if(error){ toast('Błąd usuwania: '+error.message); return; }
- toast('Usunięto'); cancelEdit(); loadAll();
+$('edel').addEventListener('click', async () => {
+  if (!sel || !sel.id) return;
+  if (!confirm('Usunąć ten obiekt? Operacji nie można cofnąć.')) return;
+  const { error } = await sb.from(TYPES[current].table).delete().eq('id', sel.id);
+  if (error) {
+    toast('Błąd usuwania: ' + error.message);
+    return;
+  }
+  toast('Usunięto');
+  cancelEdit();
+  loadAll();
 });
 
-$('eclose').addEventListener('click', ()=>{ cancelEdit(); renderMarkers(); renderList(); });
+$('eclose').addEventListener('click', () => {
+  cancelEdit();
+  renderMarkers();
+  renderList();
+});
 
-function cancelEdit(){
- if(geomEditing && editLayer){ try{ editLayer.pm.disable(); }catch(e){} }
- geomEditing=false; $('geombox').classList.remove('editing');
- if(map && map.pm) map.pm.disableDraw();
- if(editLayer){ editLayer.remove(); editLayer=null; }
- addMode=false; if(TYPES[current]) $('addbtn').textContent=TYPES[current].add;
- sel=null;
- $('editor').classList.remove('open');
+function cancelEdit() {
+  if (geomEditing && editLayer) {
+    try {
+      editLayer.pm.disable();
+    } catch (e) {}
+  }
+  geomEditing = false;
+  $('geombox').classList.remove('editing');
+  if (map && map.pm) map.pm.disableDraw();
+  if (editLayer) {
+    editLayer.remove();
+    editLayer = null;
+  }
+  addMode = false;
+  if (TYPES[current]) $('addbtn').textContent = TYPES[current].add;
+  sel = null;
+  $('editor').classList.remove('open');
 }

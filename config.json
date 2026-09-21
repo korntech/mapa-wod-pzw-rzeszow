@@ -1,0 +1,91 @@
+{
+  "site": {
+    "basePath": "/mapa-wod-pzw-rzeszow/",
+    "url": "https://korntech.github.io/mapa-wod-pzw-rzeszow/"
+  },
+  "supabase": {
+    "url": "https://cnmuvkymtacspfrqnhma.supabase.co",
+    "anonKey": "sb_publishable_TuEx7l7NZYtA0umL0KmWUA_pZ7waFM4",
+    "tables": {
+      "zbiorniki": "zbiorniki",
+      "rivers": "rivers",
+      "granice": "granice"
+    }
+  },
+  "snapshot": {
+    "file": "data.json",
+    "bbox": { "lat": [49.0, 51.0], "lon": [20.5, 23.6] },
+    "minRows": { "zb": 40, "rivers": 20, "granice": 10 },
+    "maxSegmentMeters": 2000,
+    "maxVertexDrop": 0.3,
+    "meta": {
+      "zrodla": {
+        "tresc": "Wykaz wód PZW Okręgu w Rzeszowie",
+        "geometria": "BDOT10k — Główny Urząd Geodezji i Kartografii (PZGiK)",
+        "podklad": "Usługi WMTS Geoportalu (GUGiK)"
+      },
+      "uwaga": "Dane przestrzenne z PZGiK — bezpłatne do ponownego wykorzystania, wymagane podanie źródła. Wiążący jest oficjalny wykaz wód i zezwolenie."
+    }
+  },
+  "map": {
+    "center": [50.08, 21.95],
+    "zoom": { "min": 3, "max": 16, "okreg": 6, "okolica": 8, "granica": 9, "zbiornik": 10 },
+    "crs": {
+      "code": "EPSG:2180",
+      "proj4": "+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs",
+      "origin": [100000, 850000],
+      "bounds": [[100000, 100000], [900000, 850000]],
+      "tileSize": 512,
+      "resolutions": [
+        8466.6836, 4233.3418, 2116.6709, 1058.33545, 529.167725, 264.583863, 132.291931,
+        66.145966, 26.458386, 13.229193, 6.614597, 2.645839, 1.322919, 0.529168,
+        0.264584, 0.132292, 0.066146
+      ]
+    }
+  },
+  "basemaps": {
+    "serviceUrl": "https://mapy.geoportal.gov.pl/wss/service/",
+    "attribution": { "text": "Podkład i geometrie: GUGiK · BDOT10k", "url": "https://www.geoportal.gov.pl/" },
+    "default": { "public": "mapa", "admin": "orto" },
+    "fallbackAfterErrors": 4,
+    "fallbackNotice": "Podkład Geoportalu nie odpowiada — włączono inny podkład GUGiK. Dane łowisk pozostają aktualne.",
+    "layers": [
+      {
+        "id": "mapa",
+        "title": "Mapa",
+        "path": "WMTS/guest/wmts/G2_MOBILE_500",
+        "layer": "G2_MOBILE_500",
+        "format": "image/png",
+        "minNativeZoom": 0,
+        "maxNativeZoom": 15,
+        "zoomOffset": 0
+      },
+      {
+        "id": "topo",
+        "title": "Mapa topograficzna",
+        "path": "WMTS/guest/wmts/TOPO",
+        "layer": "MAPA TOPOGRAFICZNA",
+        "format": "image/jpeg",
+        "minNativeZoom": 2,
+        "maxNativeZoom": 14,
+        "zoomOffset": -2
+      },
+      {
+        "id": "orto",
+        "title": "Ortofotomapa",
+        "path": "PZGIK/ORTO/WMTS/StandardResolution",
+        "layer": "ORTOFOTOMAPA",
+        "format": "image/jpeg",
+        "minNativeZoom": 0,
+        "maxNativeZoom": 16,
+        "zoomOffset": 0
+      }
+    ]
+  },
+  "links": {
+    "wykazPzw": "https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku",
+    "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
+    "leaflet": "https://leafletjs.com",
+    "navigation": "geo:{lat},{lon}?q={lat},{lon}"
+  }
+}

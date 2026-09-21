@@ -1,0 +1,110 @@
+{
+  "wfs": {
+    "url": "https://mapy.geoportal.gov.pl/wss/service/PZGIK/BDOT/WFS/PobieranieBDOT10k",
+    "typeNames": "ms:BDOT10k_powiaty",
+    "count": 400,
+    "timeout_s": 900,
+    "proby": 3,
+    "odstep_s": 15
+  },
+  "paczki": {
+    "url_szablon": "https://opendata.geoportal.gov.pl/bdot10k/schemat2021/{woj}/{teryt}_GML.zip",
+    "timeout_s": 900,
+    "proby": 3,
+    "odstep_s": 30
+  },
+  "crs": {
+    "zrodlowy": "EPSG:2180",
+    "docelowy": "EPSG:4326"
+  },
+  "obszar": {
+    "lat_min": 49.639,
+    "lon_min": 21.137,
+    "lat_max": 50.490,
+    "lon_max": 22.781,
+    "margines_deg": 0.05,
+    "margines_wyboru_deg": 0.02
+  },
+  "warstwy": {
+    "poligony_wod": ["OT_PTWP_A"],
+    "cieki": ["OT_SWRS_L", "OT_SWKN_L"]
+  },
+  "geometria": {
+    "miejsca_dziesietne": 6,
+    "miejsca_dziesietne_pinezki": 5
+  },
+  "rzeki": {
+    "aliasy": {
+      "stobnica": ["stopnica"],
+      "wielopolka": ["brzeznica"]
+    },
+    "korytarz_m": 250.0,
+    "udzial_min_nazwane": 0.5,
+    "korytarz_nienazwane_m": 80.0,
+    "udzial_min_nienazwane": 0.7,
+    "bbox_margines_deg": 0.05,
+    "join_m": 60.0,
+    "bridge_m": 2500.0,
+    "tolerancja_pozycji": 0.2,
+    "rdp_eps_m": 8.0
+  },
+  "zbiorniki": {
+    "promien_poszukiwan_m": 5000.0,
+    "siatka_deg": 0.05,
+    "klaster_prog_m": 400.0,
+    "klaster_min_ha": 0.15,
+    "poligon_min_ha": 0.05,
+    "waga_powierzchnia": 45.0,
+    "waga_odleglosc": 40.0,
+    "waga_nazwa": 25.0,
+    "sigma_log_powierzchni": 0.35,
+    "tau_odleglosci_m": 1500.0,
+    "bonus_liczba_obiektow": 4.0,
+    "kara_ciek": 10.0,
+    "pewne_tolerancja_ha": 0.25,
+    "pewne_odleglosc_m": 2500.0,
+    "pewne_min_ocena": 55.0,
+    "pewne_min_przewaga": 15.0,
+    "pewne_max_srednica_m": 1200.0,
+    "nazwa_tolerancja_ha": 0.5,
+    "brak_min_ocena": 25.0,
+    "brak_okno_q": [0.75, 1.33],
+    "brak_ocena": 50.0,
+    "brak_q_min": 0.3,
+    "brak_q_max": 3.3,
+    "wiarygodna_nazwa_min": 12.0,
+    "brak_nazwa_max": 10.0,
+    "limit_kandydatow": {"pewne": 1, "do_wyboru": 4, "brak": 2},
+    "slowa_pomijane": [
+      "zbiornik", "zbiorniki", "stawy", "staw", "zalew", "glinianka", "tama",
+      "no", "kill", "nokill", "i", "ii", "iii", "iv", "v", "no-kill", "mlp",
+      "n", "nad", "sanem"
+    ],
+    "rodzaj_woda_stojaca": "woda stojąca",
+    "slowo_zaporowy": "zaporow"
+  },
+  "meta": {
+    "zrodla": {
+      "tresc": "Wykaz wód PZW Okręgu w Rzeszowie 2026",
+      "geometria": "BDOT10k — Główny Urząd Geodezji i Kartografii (PZGiK)",
+      "geokodowanie": "UUG — Uniwersalna Usługa Geokodowania, GUGiK",
+      "podklad": "Usługi WMTS Geoportalu (GUGiK)"
+    },
+    "zrodlo_kandydatow": "BDOT10k OT_PTWP_A (GUGiK)",
+    "uwaga": "Dane przestrzenne pochodzą z PZGiK — bezpłatne do ponownego wykorzystania, wymagane podanie źródła."
+  },
+  "sciezki": {
+    "katalog_roboczy": "work",
+    "paczki": "paczki",
+    "powiaty": "powiaty.json",
+    "powiaty_wybrane": "powiaty_sel.json",
+    "bdot_poligony": "bdot_ptwp.json",
+    "bdot_cieki": "bdot_cieki.json",
+    "bdot_meta": "bdot_meta.json",
+    "rzeki_geometrie": "rzeki_geometrie.json",
+    "rzeki_raport": "rzeki_raport.json",
+    "kandydaci": "kandydaci_zbiorniki.json",
+    "data_wyjsciowy": "data_nowe.json",
+    "kandydaci_panel": "kandydaci_panel.json"
+  }
+}
