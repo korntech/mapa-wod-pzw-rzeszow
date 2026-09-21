@@ -5,6 +5,7 @@ import { BASEMAPS, LINKS } from './config.js';
 import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
 import { loadData, esc } from './data.js';
+import { distanceKm } from './geo.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -28,8 +29,13 @@ function initInfoModal() {
   modal.firstElementChild.onclick = (e) => e.stopPropagation();
 }
 
-function navigationUrl([lat, lon]) {
-  return LINKS.navigation.replaceAll('{lat}', lat).replaceAll('{lon}', lon);
+/** Adres nawigacji do punktu; szablon zależny od systemu urządzenia. */
+function navigationUrl([lat, lon], name) {
+  const template = /android/i.test(navigator.userAgent) ? LINKS.navigation.android : LINKS.navigation.default;
+  return template
+    .replaceAll('{lat}', lat)
+    .replaceAll('{lon}', lon)
+    .replaceAll('{name}', encodeURIComponent(name));
 }
 
 function popupHtml({ title, tag, tagColor, body, rules, approx, position }) {
@@ -37,18 +43,8 @@ function popupHtml({ title, tag, tagColor, body, rules, approx, position }) {
   if (approx) html += '<div class="approx">⚠ lokalizacja przybliżona</div>';
   html += `<div>${esc(body)}</div>`;
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
-  html += `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position))}">🧭 Nawiguj</a></div>`;
+  html += `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a></div>`;
   return html;
-}
-
-function distanceKm(a, b) {
-  const R = 6371;
-  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
-  const dLon = ((b[1] - a[1]) * Math.PI) / 180;
-  const lat1 = (a[0] * Math.PI) / 180;
-  const lat2 = (b[0] * Math.PI) / 180;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 const normalize = (s) =>
@@ -149,6 +145,7 @@ function initUi(map, layers, entries) {
   const countEl = $('count');
   const searchEl = $('search');
   let userPos = null;
+  let userMarker = null;
 
   function render() {
     const q = normalize(searchEl.value.trim());
@@ -205,9 +202,18 @@ function initUi(map, layers, entries) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         userPos = [pos.coords.latitude, pos.coords.longitude];
-        L.circleMarker(userPos, { radius: 8, fillColor: '#e53935', color: '#fff', weight: 2, fillOpacity: 1 })
-          .addTo(map)
-          .bindPopup('Tu jesteś');
+        if (userMarker) userMarker.setLatLng(userPos);
+        else {
+          userMarker = L.circleMarker(userPos, {
+            radius: 8,
+            fillColor: '#e53935',
+            color: '#fff',
+            weight: 2,
+            fillOpacity: 1,
+          })
+            .addTo(map)
+            .bindPopup('Tu jesteś');
+        }
         map.setView(userPos, ZOOM.okolica);
         render();
       },
