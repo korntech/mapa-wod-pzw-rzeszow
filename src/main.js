@@ -5,6 +5,7 @@ import { BASEMAPS, LINKS } from './config.js';
 import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
 import { loadData, esc } from './data.js';
+import { distanceKm } from './geo.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,16 +45,6 @@ function popupHtml({ title, tag, tagColor, body, rules, approx, position }) {
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
   html += `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a></div>`;
   return html;
-}
-
-function distanceKm(a, b) {
-  const R = 6371;
-  const dLat = ((b[0] - a[0]) * Math.PI) / 180;
-  const dLon = ((b[1] - a[1]) * Math.PI) / 180;
-  const lat1 = (a[0] * Math.PI) / 180;
-  const lat2 = (b[0] * Math.PI) / 180;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
 }
 
 const normalize = (s) =>
