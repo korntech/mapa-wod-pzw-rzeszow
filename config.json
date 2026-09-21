@@ -14,6 +14,7 @@
   },
   "snapshot": {
     "file": "data.json",
+    "candidatesFile": "kandydaci-zbiorniki.json",
     "bbox": { "lat": [49.0, 51.0], "lon": [20.5, 23.6] },
     "minRows": { "zb": 40, "rivers": 20, "granice": 10 },
     "maxSegmentMeters": 2000,
@@ -86,6 +87,12 @@
     "wykazPzw": "https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku",
     "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
     "leaflet": "https://leafletjs.com",
+    "report": {
+      "email": "",
+      "subject": "Mapa wód PZW — zgłoszenie błędu: {name}",
+      "body": "Łowisko: {name}\nWspółrzędne: {lat}, {lon}\n\nOpis błędu:\n",
+      "issues": "https://github.com/korntech/mapa-wod-pzw-rzeszow/issues/new"
+    },
     "navigation": {
       "android": "geo:{lat},{lon}?q={lat},{lon}({name})",
       "default": "https://maps.apple.com/?daddr={lat},{lon}&q={name}"

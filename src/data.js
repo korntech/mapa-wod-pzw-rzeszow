@@ -72,6 +72,36 @@ export async function loadData() {
   return data;
 }
 
+/** Klucz, pod którym klient Supabase trzyma sesję w localStorage. */
+function sessionStorageKey(sb) {
+  return sb.auth.storageKey || `sb-${new URL(SUPABASE.url).hostname.split('.')[0]}-auth-token`;
+}
+
+/** Kończy sesję operatora niezależnie od dostępności serwera: token znika lokalnie od razu,
+ *  a unieważnienie po stronie serwera jest wysyłane bez czekania na odpowiedź. */
+export function signOut() {
+  const sb = getSupabase();
+  if (!sb) return;
+  const key = sessionStorageKey(sb);
+  let token = null;
+  try {
+    token = JSON.parse(localStorage.getItem(key) || 'null')?.access_token || null;
+  } catch {
+    token = null;
+  }
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* brak dostępu do storage — sesja i tak nie została zapisana */
+  }
+  if (!token) return;
+  fetch(`${SUPABASE.url}/auth/v1/logout?scope=global`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE.anonKey, Authorization: `Bearer ${token}` },
+    keepalive: true,
+  }).catch(() => {});
+}
+
 /** Escapowanie tekstu przed wstawieniem do HTML. */
 export function esc(value) {
   return (value == null ? '' : String(value)).replace(

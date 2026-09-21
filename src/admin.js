@@ -6,14 +6,17 @@ import '@geoman-io/leaflet-geoman-free';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-import { BASEMAPS, LINKS, SUPABASE } from './config.js';
+import { BASEMAPS, LINKS, SUPABASE, SNAPSHOT } from './config.js';
 import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
-import { getSupabase, esc } from './data.js';
+import { getSupabase, signOut, esc } from './data.js';
 
 // Jawne ścieżki ikon znacznika (Leaflet nie wykrywa ich pod bundlerem).
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
+
+// Panel nie może być osadzany w ramce innej strony.
+if (window.top !== window.self) window.top.location = window.self.location;
 
 const $ = (id) => document.getElementById(id);
 const TYPES = {
@@ -21,6 +24,7 @@ const TYPES = {
   rivers: { table: SUPABASE.tables.rivers, kind: 'line', add: '✏️ Narysuj nową rzekę', color: '#0288d1' },
   gr: { table: SUPABASE.tables.granice, kind: 'point', add: '➕ Dodaj granicę', color: '#616161' },
 };
+let candidates = {};
 let sb = null,
   map,
   layers = {},
@@ -48,6 +52,7 @@ if (!sb) {
     '<div class="card"><h2>Brak konfiguracji</h2><p>Uzupełnij sekcję <b>supabase</b> w pliku <b>config.json</b> (adres projektu i klucz publiczny), aby włączyć panel operatora.</p></div>';
 } else {
   initMap();
+  loadCandidates();
   sb.auth.getSession().then(({ data }) => {
     if (data.session) onLogin(data.session);
   });
@@ -111,9 +116,9 @@ function onLogin(session) {
   setType('zb');
   loadAll();
 }
-$('logout').addEventListener('click', async () => {
-  await sb.auth.signOut();
-  location.reload();
+$('logout').addEventListener('click', () => {
+  signOut();
+  location.replace('admin.html');
 });
 
 // --- DANE ---
@@ -214,6 +219,8 @@ function select(type, id) {
   if (!o) return;
   sel = o;
   fillForm(type, o, 'Edycja');
+  if (type === 'zb') renderCandidates(o);
+  else $('kandbox').style.display = 'none';
   if (TYPES[type].kind === 'point') {
     editLayer = L.marker([o.lat, o.lon], { draggable: true }).addTo(map);
     editLayer.on('drag', () => {
@@ -231,6 +238,54 @@ function select(type, id) {
   }
   renderList();
   $('editor').classList.add('open');
+}
+
+/** Propozycje akwenów z BDOT10k dla zbiorników o lokalizacji przybliżonej (plik publikowany ze stroną). */
+async function loadCandidates() {
+  try {
+    const res = await fetch(import.meta.env.BASE_URL + SNAPSHOT.candidatesFile);
+    if (!res.ok) return;
+    const data = await res.json();
+    for (const w of data.wyniki || []) candidates[w.nazwa] = w.kandydaci || [];
+  } catch {
+    candidates = {};
+  }
+}
+
+function renderCandidates(o) {
+  const box = $('kandbox');
+  const list = candidates[o.n] || [];
+  if (!list.length) {
+    box.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  $('kandlist').innerHTML = list
+    .map((k, i) => {
+      const nazwa = k.nazwa_bdot ? esc(k.nazwa_bdot) : 'akwen bez nazwy';
+      const obiekty = k.liczba_poligonow > 1 ? `, ${k.liczba_poligonow} obiekty` : '';
+      return (
+        `<div class="kand" data-i="${i}"><b>${i + 1}. ${nazwa}</b> · ${k.ha.toFixed(2)} ha${obiekty}` +
+        `<div class="meta">${esc(k.rodzaj)} · ${Math.round(k.odleglosc_m)} m od obecnej pinezki · ocena ${Math.round(k.ocena)}/100</div></div>`
+      );
+    })
+    .join('');
+  $('kandlist')
+    .querySelectorAll('.kand')
+    .forEach((el) => el.addEventListener('click', () => applyCandidate(list[+el.dataset.i], el)));
+}
+
+function applyCandidate(k, el) {
+  if (!editLayer) return;
+  const latlng = [k.lat, k.lon];
+  editLayer.setLatLng(latlng);
+  $('f_lat').value = k.lat.toFixed(5);
+  $('f_lon').value = k.lon.toFixed(5);
+  $('f_a').checked = false;
+  map.setView(latlng, Math.max(map.getZoom(), ZOOM.zbiornik + 2));
+  $('kandlist')
+    .querySelectorAll('.kand')
+    .forEach((x) => x.classList.toggle('sel', x === el));
 }
 
 function fillForm(type, o, title) {
@@ -299,6 +354,7 @@ function placePoint(latlng) {
     { lat: latlng.lat.toFixed(5), lon: latlng.lng.toFixed(5) },
     current === 'zb' ? 'Nowy zbiornik' : 'Nowa granica'
   );
+  $('kandbox').style.display = 'none';
   $('editor').classList.add('open');
 }
 function newRiver(arr) {

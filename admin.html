@@ -49,6 +49,10 @@ button{font-family:inherit}
 #editor .efoot .btn{flex:1;text-align:center;padding:9px}
 #editor .grp{display:none}
 #editor[data-type="zb"] .for-zb,#editor[data-type="gr"] .for-gr,#editor[data-type="rivers"] .for-rivers{display:block}
+#kandlist .kand{padding:7px 9px;border:1px solid #d5dbe1;border-radius:7px;margin-bottom:5px;cursor:pointer;font-size:12.5px;background:#fff}
+#kandlist .kand:hover{background:#e8f1fa}
+#kandlist .kand.sel{border-color:var(--blue);background:#d6e8fa}
+#kandlist .kand .meta{color:#666;font-size:11.5px}
 #geombox{margin-top:12px;padding:10px;border:1px dashed #bbb;border-radius:8px;background:#fafafa}
 #geombox .btn{width:100%;padding:8px;margin-bottom:6px}
 #geombox.editing{border-color:var(--blue);background:#eef5fc}
@@ -63,6 +67,7 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
 .card .btn{width:100%;margin-top:16px;padding:11px}
 .msg{font-size:13px;margin-top:12px;min-height:18px}
 .msg.err{color:#c62828}
+.card .back{display:block;margin-top:14px;text-align:center;font-size:13px;color:var(--dark)}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0d3b66;color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none}
 #toast.show{opacity:1}
 @media(max-width:720px){#side{width:46%}#editor{width:100%}}
@@ -128,6 +133,14 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
     <label class="chk"><input type="checkbox" id="f_a"> Lokalizacja przybliżona (⚠)</label>
    </div>
 
+   <div class="grp for-zb">
+    <div id="kandbox" style="display:none">
+     <label>Kandydujące akweny (GUGiK, BDOT10k)</label>
+     <div id="kandlist"></div>
+     <div class="hint">Kliknij kandydata, aby przenieść pinezkę i obejrzeć akwen na ortofotomapie. Zapisz, gdy lokalizacja się zgadza.</div>
+    </div>
+   </div>
+
    <div class="grp for-zb for-gr">
     <div class="row" style="margin-top:12px">
      <div><label>Szerokość (lat)</label><input type="text" id="f_lat"></div>
@@ -162,6 +175,7 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
    <button class="btn primary" type="submit" id="loginbtn">Zaloguj</button>
   </form>
   <div class="msg" id="loginmsg"></div>
+  <a class="back" href="index.html">← Wróć do mapy publicznej</a>
  </div>
 </div>
 

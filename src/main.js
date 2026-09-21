@@ -43,8 +43,21 @@ function popupHtml({ title, tag, tagColor, body, rules, approx, position }) {
   if (approx) html += '<div class="approx">⚠ lokalizacja przybliżona</div>';
   html += `<div>${esc(body)}</div>`;
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
-  html += `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a></div>`;
+  html +=
+    `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a>` +
+    ` · <a target="_blank" rel="noopener noreferrer" href="${esc(reportUrl(position, title))}">✉️ Zgłoś błąd</a></div>`;
   return html;
+}
+
+/** Adres zgłoszenia błędu: e-mail do Okręgu, a gdy nie jest skonfigurowany — formularz zgłoszenia w repozytorium. */
+function reportUrl([lat, lon], name) {
+  const fill = (t) => t.replaceAll('{name}', name).replaceAll('{lat}', lat).replaceAll('{lon}', lon);
+  const subject = fill(LINKS.report.subject);
+  const body = fill(LINKS.report.body);
+  if (LINKS.report.email) {
+    return `mailto:${LINKS.report.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }
+  return `${LINKS.report.issues}?title=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
 const normalize = (s) =>

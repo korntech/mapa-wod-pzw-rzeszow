@@ -1,0 +1,162 @@
+{
+  "zrodlo": {
+    "url": "https://rzeszow.pzw.pl/brepo/panel_repo/2025/12/31/vwk3fa/wykaz-wod-pzw-okregu-w-rzeszowie.pdf",
+    "uwaga": "PDF jest własnością PZW Okręgu w Rzeszowie i nie trafia do repozytorium; podaje się go ścieżką lub pobiera poleceniem `pobierz`."
+  },
+  "sciezki": {
+    "pdf": "wykaz-wod-pzw-okregu-w-rzeszowie.pdf",
+    "dane": "data.json",
+    "wyjscie": "run",
+    "strony": "strony",
+    "komorki": "komorki.json",
+    "rekordy": "rekordy.json",
+    "raport_md": "raport.md",
+    "raport_json": "raport.json"
+  },
+  "ocr": {
+    "dpi": 300,
+    "jezyk": "pol",
+    "skala": 2,
+    "psm_wielowierszowy": 6,
+    "psm_jednowierszowy": 7,
+    "psm_liczba": 7,
+    "wysokosc_jednowierszowa_px": 60,
+    "margines_komorki_px": 4,
+    "dlugosc_linii_ulamek": 0.033,
+    "min_pole_komorki_px": 400,
+    "min_wysokosc_pasma_px": 8,
+    "tolerancja_pasma_px": 6,
+    "pelna_szerokosc_ulamek": 0.9,
+    "min_wypelnienie_pasma": 0.85,
+    "max_szerokosc_liczby_px": 160,
+    "tlo_psm": 6
+  },
+  "parser": {
+    "naglowki": {
+      "obwody_nizinne": [
+        "granice obwodu",
+        "obwod rybacki"
+      ],
+      "zbiorniki": [
+        "nazwa zbiornika"
+      ],
+      "obwody_gorskie": [
+        "rzeka",
+        "pstraga",
+        "krainy"
+      ]
+    },
+    "zasady_naglowek": "^\\s*obowi[aą]zuj[aą]ce\\s+zasady\\s*:?\\s*$",
+    "ciag_dalszy_ze": "ci[aąq]\\w*\\s+dalsz\\w*\\s+ze\\s+str\\.?\\s*\\d*\\.?",
+    "ciag_dalszy_na": "ci[aąq]\\w*\\s+dalsz\\w*\\s+na\\s+str\\.?\\s*\\d*\\.?",
+    "poczatek_punktu": "^\\s*([-–*•]|\\d+\\.)\\s*",
+    "ha_bez_separatora_dwa_miejsca": true,
+    "prefiks_zbiornikow": "^\\s*zbiornik[i]?\\s*:?\\s*",
+    "poprawki_ocr": [
+      [
+        "(?m)(?<=\\S)\\s*\\|\\s*$",
+        " I"
+      ],
+      [
+        "\\s*[|]\\s*",
+        " "
+      ],
+      [
+        "\\bIll\\b",
+        "III"
+      ],
+      [
+        "\\bIl\\b",
+        "II"
+      ],
+      [
+        "\\bIi\\b",
+        "I i"
+      ],
+      [
+        "\\bli\\b",
+        "I i"
+      ],
+      [
+        "(?:\\b|[(GQ])ałkowit[yv]",
+        "Całkowity"
+      ],
+      [
+        "\\bśpinningowa",
+        "spinningowa"
+      ],
+      [
+        "\\bsie\\b",
+        "się"
+      ],
+      [
+        "\\bwm\\.",
+        "w m."
+      ],
+      [
+        "[„”“]",
+        "\""
+      ],
+      [
+        "[’‘]",
+        "'"
+      ],
+      [
+        "(?<=\\d)\\s*i\\s*(?=\\d)",
+        " i "
+      ],
+      [
+        "\\b([Nn]r)(?=\\d)",
+        "\\1 "
+      ],
+      [
+        "_{2,}",
+        " "
+      ],
+      [
+        "[ \\t]+",
+        " "
+      ]
+    ],
+    "koniec_punktu": "(?:(?<!\\btj)(?<!\\bm)(?<!\\bnp)(?<!\\bzb)(?<!\\bul)(?<!\\bgodz)(?<!\\bmłp)\\.|[:;)])$"
+  },
+  "porownanie": {
+    "prog_nazwy": 88,
+    "prog_typu": 80,
+    "prog_zasad": 60,
+    "prog_granic": 60,
+    "tolerancja_ha": 0.005,
+    "podpowiedz_min": 55,
+    "max_twardych": 0,
+    "stopwords_nazw": [
+      "zbiornik",
+      "zbiorniki",
+      "zalew",
+      "stawy",
+      "staw",
+      "nr",
+      "no",
+      "kill",
+      "nokill"
+    ],
+    "aliasy_nazw": {
+      "lipie i": "lipie"
+    },
+    "stopwords_rzek": [
+      "kraina",
+      "pstraga",
+      "z",
+      "doplywami",
+      "potok",
+      "obwod"
+    ],
+    "aliasy_rzek": {},
+    "stopwords_obwodow": [
+      "obwod"
+    ],
+    "frazy_zasad_ogolnych": [
+      "zasady ogolne"
+    ],
+    "kara_numeracji": 60
+  }
+}

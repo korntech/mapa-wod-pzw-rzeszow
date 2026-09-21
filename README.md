@@ -43,10 +43,10 @@ Wszystkie adresy i parametry zmienne są w jednym pliku **`config.json`**:
 |---|---|
 | `site` | ścieżka bazowa i adres publiczny strony |
 | `supabase` | adres projektu, klucz publiczny (`anonKey`), nazwy tabel |
-| `snapshot` | nazwa pliku snapshotu, obrys i progi walidacji, metadane źródeł |
+| `snapshot` | nazwy plików snapshotu i kandydatów akwenów, obrys i progi walidacji, metadane źródeł |
 | `map` | środek i poziomy zoomu, definicja układu współrzędnych i siatki kafli |
 | `basemaps` | adres usługi WMTS, warstwy podkładów, podkład domyślny mapy i panelu, komunikat awaryjny |
-| `links` | linki zewnętrzne używane na stronie (wykaz PZW, repozytorium, szablon nawigacji) |
+| `links` | linki zewnętrzne używane na stronie (wykaz PZW, repozytorium, szablony nawigacji i zgłoszenia błędu — `report.email` Okręgu) |
 
 Klucz `anonKey` jest z założenia jawny (trafia do przeglądarki); o bezpieczeństwie zapisu
 decydują reguły RLS w bazie (`db/schema.sql`). Przy pustej sekcji `supabase` mapa działa
@@ -77,6 +77,7 @@ Po przejściu na własną domenę ustaw `site.basePath` w `config.json` (albo `P
 | `public/data.json` | snapshot bazy (odświeżany co noc) |
 | `tools/snapshot/` | eksport, walidacja i generator SQL zasilającego bazę |
 | `tools/bdot/` | pipeline geometrii z BDOT10k |
+| `tools/qa/` | QA harness: porównanie danych z oficjalnym wykazem PZW (PDF) |
 | `db/` | schemat bazy i migracje |
 | `docs/` | raporty jakości danych i specyfikacje |
 | `.github/workflows/` | CI, publikacja, snapshot, healthcheck |
@@ -107,6 +108,8 @@ Po przejściu na własną domenę ustaw `site.basePath` w `config.json` (albo `P
 
 Panel: `…/admin.html`. Operator edytuje zbiorniki i granice (pinezki), przebiegi rzek
 (wierzchołki, [Leaflet-Geoman](https://geoman.io/)) oraz atrybuty; zmiany są widoczne na mapie po odświeżeniu.
+Przy zbiorniku o lokalizacji przybliżonej panel pokazuje kandydujące akweny z BDOT10k
+(`public/kandydaci-zbiorniki.json`: powierzchnia, odległość, ocena); kliknięcie przenosi pinezkę na wybrany akwen.
 
 ### Migracje
 
@@ -116,6 +119,14 @@ Każdą uruchamia się raz w SQL Editor; skrypty są idempotentne.
 |---|---|---|
 | `db/migrate-2026-09-20-bdot10k.sql` | geometrie rzek z BDOT10k, 10 zbiorników przeniesionych na akweny | uruchomiona |
 | `db/migrate-2026-09-21-uprawnienia.sql` | zawężenie uprawnień do allow-listy i funkcji pomocniczych | **do uruchomienia** |
+| `db/migrate-2026-09-21-kraina-pstraga.sql` | trzy cieki krainy pstrąga z wykazu (Słotowski, Dopływ z Połomii, Czarna (Grabinka)) i doprecyzowane zasady dwóch zbiorników | **do uruchomienia** |
+
+## Kontrola zgodności z wykazem PZW (QA harness)
+
+`tools/qa/` porównuje dane aplikacji z oficjalnym wykazem (skan PDF): OCR tabel, dopasowanie
+zbiorników, obwodów nizinnych i cieków krainy pstrąga, raport rozbieżności (powierzchnie, typy,
+granice, zasady). Uruchomienie i wymagania (tesseract z językiem polskim, poppler) — w
+[`tools/qa/README.md`](tools/qa/README.md). Plik PDF wykazu nie jest częścią repozytorium.
 
 ## Automatyzacje (GitHub Actions)
 
@@ -137,7 +148,7 @@ Zgłoś błąd lub poprawkę przez [Issues](https://github.com/korntech/mapa-wod
 Znane braki:
 
 1. **27 zbiorników z `a:1`** ma lokalizację przybliżoną. Propozycje akwenów z BDOT10k są w
-   [`docs/kandydaci-zbiorniki.json`](docs/kandydaci-zbiorniki.json), omówienie w [`docs/raport-zbiorniki.md`](docs/raport-zbiorniki.md);
+   [`public/kandydaci-zbiorniki.json`](public/kandydaci-zbiorniki.json) (panel operatora pokazuje je przy zbiorniku), omówienie w [`docs/raport-zbiorniki.md`](docs/raport-zbiorniki.md);
    wybór wymaga wiedzy lokalnej.
 2. **Trzebośnica** — BDOT10k nazywa ciek dopiero ok. 1,2 km poniżej punktu „od źródeł” z wykazu.
 3. **Granica obwodów Wisłok 3/4** (most kolejowy w Rzeszowie) jest przybliżona.
