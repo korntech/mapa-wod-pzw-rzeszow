@@ -51,7 +51,7 @@ jobs:
 
       - name: Klasyfikacja
         id: model
-        uses: actions/ai-inference@v1
+        uses: actions/ai-inference@2c43c91ae16266ca159d311430343c67a5ffa222 # v3
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         with:
