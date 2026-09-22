@@ -276,13 +276,19 @@ function initReporting(data) {
     issuesUrl: LINKS.report.issues,
     mapUrl: SITE.url,
   });
-  document.addEventListener('click', (ev) => {
-    const link = ev.target.closest('a[data-report]');
-    if (!link) return;
-    ev.preventDefault();
-    $('infomodal').style.display = 'none';
-    form.open(link.dataset.report);
-  });
+  // Faza przechwytywania: link może leżeć w oknie „O mapie” lub w popupie Leaflet,
+  // które zatrzymują propagację kliknięć w fazie bąbelkowania.
+  document.addEventListener(
+    'click',
+    (ev) => {
+      const link = ev.target.closest('a[data-report]');
+      if (!link) return;
+      ev.preventDefault();
+      $('infomodal').style.display = 'none';
+      form.open(link.dataset.report);
+    },
+    true
+  );
 }
 
 async function main() {

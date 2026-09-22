@@ -1,6 +1,7 @@
 {
   "etykietaZgloszenia": "zgłoszenie",
   "model": "gpt-4.1",
+  "budzetDobowy": 30,
   "maxKandydatow": 4,
   "maxTresci": 4000,
   "etykiety": {

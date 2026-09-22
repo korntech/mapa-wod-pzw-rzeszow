@@ -46,30 +46,12 @@ jobs:
           node tools/triage/prompt.mjs issue.json triage
           echo "model=$(jq -r .model tools/triage/config.json)" >> "$GITHUB_OUTPUT"
 
-      # Budżet dobowy chroni limit Copilota przed zalewem zgłoszeń: powyżej progu z config.json
-      # issue zostaje bez klasyfikacji (operator widzi je i tak po etykiecie „zgłoszenie”).
-      - name: Budżet dobowy
-        id: budzet
-        run: |
-          LIMIT=$(jq -r .budzetDobowy tools/triage/config.json)
-          ETYKIETA=$(jq -r .etykietaZgloszenia tools/triage/config.json)
-          SINCE=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          N=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$ETYKIETA" --state all \
-                --search "created:>=$SINCE" --limit 500 --json number --jq 'length')
-          echo "Zgłoszeń w ostatniej dobie: $N (budżet klasyfikacji: $LIMIT)"
-          if [ "$N" -gt "$LIMIT" ]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Budżet dobowy klasyfikacji wyczerpany — issue #$ISSUE pozostaje bez oceny modelu."
-          fi
-
       - name: Zainstaluj Copilot CLI
-        if: steps.budzet.outputs.skip != 'true'
         run: npm install -g @github/copilot
 
       - name: Klasyfikacja
-        if: steps.budzet.outputs.skip != 'true'
         id: model
-        uses: actions/ai-inference@2c43c91ae16266ca159d311430343c67a5ffa222 # v3
+        uses: actions/ai-inference@v1
         env:
           COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
         with:
@@ -78,5 +60,4 @@ jobs:
           model: ${{ steps.prompt.outputs.model }}
 
       - name: Etykiety i komentarz
-        if: steps.budzet.outputs.skip != 'true'
         run: node tools/triage/apply.mjs "${{ steps.model.outputs.response-file }}" "$ISSUE"

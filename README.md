@@ -142,6 +142,13 @@ npx supabase functions deploy zglos-blad --project-ref <ref>
 `supabase/config.toml` wyłącza dla tej funkcji wymóg JWT (formularz jest publiczny). Token wygasa
 w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sekret ponownie.
 
+Ochrona przed nadużyciami (limity w `zgloszenie.js` → `LIMITY`): 5 zgłoszeń na godzinę z jednego adresu IP,
+20 na godzinę i 60 na dobę łącznie, odrzucanie powtórek (to samo łowisko z tego samego adresu albo identyczny
+opis w ciągu doby), pole-pułapka dla botów, adresy IP kasowane po 30 dniach. Wyłącznik awaryjny: sekret
+`ZGLOSZENIA_WSTRZYMANE=1` w funkcji (`npx supabase secrets set …`) zatrzymuje przyjmowanie zgłoszeń bez zmiany
+kodu. Klasyfikacja AI ma osobny budżet dobowy (`tools/triage/config.json` → `budzetDobowy`); powyżej niego
+zgłoszenia zostają bez oceny modelu, ale nadal trafiają do Issues.
+
 ## Wstępna klasyfikacja zgłoszeń (AI)
 
 Workflow `triage.yml` uruchamia się przy każdym nowym issue z etykietą `zgłoszenie`: buduje prompt

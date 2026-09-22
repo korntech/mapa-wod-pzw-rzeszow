@@ -44,6 +44,8 @@ async function createIssue(title: string, body: string) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   if (req.method !== 'POST') return json(req, 405, { ok: false, error: 'metoda' });
+  // Wyłącznik awaryjny: sekret ZGLOSZENIA_WSTRZYMANE=1 zatrzymuje przyjmowanie zgłoszeń bez zmiany kodu.
+  if (Deno.env.get('ZGLOSZENIA_WSTRZYMANE') === '1') return json(req, 503, { ok: false, error: 'wstrzymane' });
 
   let input: unknown;
   try {
@@ -71,6 +73,22 @@ Deno.serve(async (req) => {
     .select('id', { count: 'exact', head: true })
     .gte('created_at', odKiedy);
   if ((lacznie ?? 0) >= LIMITY.lacznieNaGodzine) return json(req, 429, { ok: false, error: 'limit' });
+  const odDoby = new Date(Date.now() - 86400 * 1000).toISOString();
+  const { count: naDobe } = await db
+    .from('zgloszenia')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', odDoby);
+  if ((naDobe ?? 0) >= LIMITY.lacznieNaDobe) return json(req, 429, { ok: false, error: 'limit' });
+  // Powtórka: to samo łowisko z tego samego adresu albo identyczny opis w ciągu doby — bez nowego issue.
+  const { data: ostatnie } = await db
+    .from('zgloszenia')
+    .select('ip, nazwa, opis')
+    .gte('created_at', odDoby)
+    .limit(LIMITY.lacznieNaDobe);
+  const powtorka = (ostatnie ?? []).some(
+    (z) => (z.ip === ip && z.nazwa === report.nazwa) || z.opis === report.opis
+  );
+  if (powtorka) return json(req, 409, { ok: false, error: 'powtorka' });
 
   const { title, body } = issueContent(report, Deno.env.get('MAP_URL') || '');
   let issue;

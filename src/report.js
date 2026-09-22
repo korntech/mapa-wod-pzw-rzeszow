@@ -25,6 +25,8 @@ const KOMUNIKATY = {
   opis: `Opis musi mieć od ${LIMITY.opisMin} do ${LIMITY.opisMax} znaków.`,
   spam: 'Zgłoszenie zostało odrzucone.',
   limit: 'Za dużo zgłoszeń z tego adresu w ciągu godziny. Spróbuj później.',
+  powtorka: 'Takie zgłoszenie już dziś wpłynęło — dziękujemy, jest w kolejce do sprawdzenia.',
+  wstrzymane: 'Przyjmowanie zgłoszeń jest chwilowo wstrzymane.',
   github: 'Nie udało się założyć zgłoszenia na GitHubie.',
   baza: 'Serwer zgłoszeń jest chwilowo niedostępny.',
   siec: 'Nie udało się połączyć z serwerem zgłoszeń.',

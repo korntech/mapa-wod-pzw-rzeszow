@@ -7,7 +7,8 @@ export const LIMITY = {
   kontaktMax: 200,
   nazwaMax: 200,
   naGodzine: 5,
-  lacznieNaGodzine: 60,
+  lacznieNaGodzine: 20,
+  lacznieNaDobe: 60,
   retencjaDni: 30,
 };
 
