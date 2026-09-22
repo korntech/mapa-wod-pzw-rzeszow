@@ -8,9 +8,34 @@ const dane = {
     { n: 'Bratkowice', p: [50.1, 21.9] },
   ],
   rivers: [
-    { n: 'San', c: 'niz', o: 'San 3', pts: [[49.9, 22.1], [49.95, 22.15], [50.0, 22.2]] },
-    { n: 'San', c: 'niz', o: 'San 4', pts: [[50.0, 22.2], [50.1, 22.3]] },
-    { n: 'Stobnica', c: 'gor', o: 'Wisłok 3', pts: [[49.8, 21.9], [49.85, 21.95]] },
+    {
+      n: 'San',
+      c: 'niz',
+      o: 'San 3',
+      pts: [
+        [49.9, 22.1],
+        [49.95, 22.15],
+        [50.0, 22.2],
+      ],
+    },
+    {
+      n: 'San',
+      c: 'niz',
+      o: 'San 4',
+      pts: [
+        [50.0, 22.2],
+        [50.1, 22.3],
+      ],
+    },
+    {
+      n: 'Stobnica',
+      c: 'gor',
+      o: 'Wisłok 3',
+      pts: [
+        [49.8, 21.9],
+        [49.85, 21.95],
+      ],
+    },
   ],
   granice: [{ n: 'granica', p: [50, 22] }],
 };
@@ -33,7 +58,10 @@ test('rzeki dostają środek przebiegu, a powtarzające się nazwy dopisek z obw
 });
 
 test('granice nie są wodami do zgłaszania', () => {
-  assert.equal(waterOptions(dane).some((o) => o.nazwa === 'granica'), false);
+  assert.equal(
+    waterOptions(dane).some((o) => o.nazwa === 'granica'),
+    false
+  );
 });
 
 /* Formularz: prawdziwy znacznik z index.html w jsdom. */
@@ -52,7 +80,8 @@ function setupForm({ send } = {}) {
   const calls = [];
   const form = initReportForm({
     options: waterOptions(dane),
-    send: send || (async (r) => (calls.push(r), { ok: true, numer: 7, url: 'https://github.com/x/y/issues/7' })),
+    send:
+      send || (async (r) => (calls.push(r), { ok: true, numer: 7, url: 'https://github.com/x/y/issues/7' })),
     issuesUrl: 'https://github.com/x/y/issues/new',
     mapUrl: 'https://example.org/mapa/',
   });
@@ -74,7 +103,10 @@ test('otwarcie z kluczem pokazuje modal z wybraną wodą', () => {
 
 test('lista wód ma dwie grupy: zbiorniki i rzeki', () => {
   const { el } = setupForm();
-  const groups = [...el('select[name=woda]').querySelectorAll('optgroup')].map((g) => [g.label, g.children.length]);
+  const groups = [...el('select[name=woda]').querySelectorAll('optgroup')].map((g) => [
+    g.label,
+    g.children.length,
+  ]);
   assert.deepEqual(groups, [
     ['Zbiorniki', 2],
     ['Rzeki', 3],
@@ -108,7 +140,8 @@ test('poprawne zgłoszenie trafia do send i pokazuje numer issue', async () => {
   ]);
   assert.equal(el('#reportform').style.display, 'none');
   assert.equal(el('#rep-done').style.display, 'block');
-  assert.equal(el('#rep-done a').textContent, '#7');
+  assert.equal(el('#rep-done [data-numer]').textContent, '7');
+  assert.equal(el('#rep-done a').textContent, 'zgłoszenie #7 na GitHubie');
   assert.equal(el('#rep-done a').href, 'https://github.com/x/y/issues/7');
 });
 

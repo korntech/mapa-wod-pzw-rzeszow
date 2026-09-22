@@ -19,6 +19,7 @@
     "minRows": { "zb": 40, "rivers": 20, "granice": 10 },
     "maxSegmentMeters": 2000,
     "maxVertexDrop": 0.3,
+    "limits": { "n": 200, "t": 200, "ha": 40, "o": 100, "d": 4000, "r": 4000, "pts": 20000, "fileBytes": 8388608 },
     "meta": {
       "zrodla": {
         "tresc": "Wykaz wód PZW Okręgu w Rzeszowie",
@@ -86,6 +87,7 @@
   "links": {
     "wykazPzw": "https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku",
     "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
+    "instrukcja": "https://github.com/korntech/mapa-wod-pzw-rzeszow/blob/main/docs/instrukcja-operatora.md",
     "leaflet": "https://leafletjs.com",
     "report": {
       "function": "zglos-blad",

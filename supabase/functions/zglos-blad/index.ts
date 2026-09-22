@@ -55,7 +55,8 @@ Deno.serve(async (req) => {
   if (!wynik.ok) return json(req, 400, { ok: false, error: wynik.error });
   const { report } = wynik;
 
-  const ip = (req.headers.get('x-forwarded-for') || 'nieznany').split(',')[0].trim();
+  // Ostatni wpis x-forwarded-for pochodzi od bramy Supabase; wcześniejsze może dopisać klient.
+  const ip = (req.headers.get('x-forwarded-for') || 'nieznany').split(',').pop()!.trim() || 'nieznany';
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
   const odKiedy = new Date(Date.now() - 3600 * 1000).toISOString();
   const { count, error: countError } = await db
@@ -65,6 +66,11 @@ Deno.serve(async (req) => {
     .gte('created_at', odKiedy);
   if (countError) return json(req, 500, { ok: false, error: 'baza' });
   if ((count ?? 0) >= LIMITY.naGodzine) return json(req, 429, { ok: false, error: 'limit' });
+  const { count: lacznie } = await db
+    .from('zgloszenia')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', odKiedy);
+  if ((lacznie ?? 0) >= LIMITY.lacznieNaGodzine) return json(req, 429, { ok: false, error: 'limit' });
 
   const { title, body } = issueContent(report, Deno.env.get('MAP_URL') || '');
   let issue;
@@ -87,6 +93,9 @@ Deno.serve(async (req) => {
     issue_url: issue.url,
   });
   if (insertError) console.error(insertError);
+  // Adres IP jest daną osobową: wpisy starsze niż okres retencji są usuwane przy każdym zgłoszeniu.
+  const retencja = new Date(Date.now() - LIMITY.retencjaDni * 86400 * 1000).toISOString();
+  await db.from('zgloszenia').delete().lt('created_at', retencja);
 
   return json(req, 200, { ok: true, numer: issue.numer, url: issue.url });
 });

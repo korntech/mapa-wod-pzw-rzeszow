@@ -1,7 +1,9 @@
 # Nocny eksport tabel łowisk z bazy do pliku snapshotu w repozytorium.
 # Odczyt korzysta z klucza publicznego z config.json (bez sekretów).
 # Eksport wstrzymuje się, gdy baza zwraca mniej danych niż obecny snapshot
-# (tools/snapshot/export.mjs) — wtedy nic nie jest commitowane, a job kończy się błędem.
+# (tools/snapshot/export.mjs), a walidacja odrzuca dane spoza limitów
+# (tools/snapshot/validate.mjs) — wtedy nic nie jest commitowane, a job kończy się błędem.
+# Po udanym przebiegu publikację strony uruchamia deploy.yml (wyzwalacz workflow_run).
 
 name: Snapshot danych z bazy
 
@@ -23,7 +25,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: npm
@@ -44,6 +46,6 @@ jobs:
           fi
           git config user.name  "snapshot-bot"
           git config user.email "snapshot-bot@users.noreply.github.com"
-          git add "$FILE"
+          git add -- "$FILE"
           git commit -m "Snapshot danych z bazy ($(date -u +%Y-%m-%d))"
           git push

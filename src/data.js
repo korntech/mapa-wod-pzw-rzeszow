@@ -11,28 +11,32 @@ let client = null;
 export function getSupabase() {
   if (client) return client;
   if (!SUPABASE.url || !SUPABASE.anonKey) return null;
-  client = createClient(SUPABASE.url, SUPABASE.anonKey);
+  client = createClient(SUPABASE.url, SUPABASE.anonKey, { auth: { detectSessionInUrl: false } });
   return client;
 }
 
-/* Mapowanie rekordów bazy na format snapshotu (ten sam co w tools/snapshot/export.mjs). */
+const text = (v) => (typeof v === 'string' ? v : '');
+
+/* Mapowanie rekordów bazy na format snapshotu (ten sam co w tools/snapshot/export.mjs).
+ * Wartości spoza oczekiwanego typu są zastępowane pustymi, aby jeden błędny rekord
+ * w bazie nie zatrzymał renderowania całej mapy. */
 const mapZbiornik = (z) => ({
-  n: z.n,
+  n: text(z.n),
   p: [z.lat, z.lon],
-  ha: z.ha || '—',
-  t: z.t || '',
-  r: z.r || '',
-  a: z.a || 0,
+  ha: text(z.ha) || '—',
+  t: text(z.t),
+  r: text(z.r),
+  a: z.a ? 1 : 0,
 });
 const mapRiver = (r) => ({
-  n: r.n,
-  c: r.c || 'niz',
-  o: r.o || '',
-  d: r.d || '',
-  r: r.r || '',
-  pts: r.pts || [],
+  n: text(r.n),
+  c: r.c === 'gor' ? 'gor' : 'niz',
+  o: text(r.o),
+  d: text(r.d),
+  r: text(r.r),
+  pts: Array.isArray(r.pts) ? r.pts : [],
 });
-const mapGranica = (g) => ({ n: g.n, p: [g.lat, g.lon], d: g.d || '' });
+const mapGranica = (g) => ({ n: text(g.n), p: [g.lat, g.lon], d: text(g.d) });
 
 /** Kolekcje odczytane z bazy; brak klucza oznacza nieudany odczyt tej kolekcji. */
 export async function loadFromSupabase() {
@@ -102,10 +106,10 @@ export function signOut() {
   }).catch(() => {});
 }
 
-/** Escapowanie tekstu przed wstawieniem do HTML. */
+/** Escapowanie tekstu przed wstawieniem do HTML (treść oraz atrybuty w cudzysłowie lub apostrofie). */
 export function esc(value) {
   return (value == null ? '' : String(value)).replace(
-    /[&<>"]/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]
+    /[&<>"']/g,
+    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
   );
 }

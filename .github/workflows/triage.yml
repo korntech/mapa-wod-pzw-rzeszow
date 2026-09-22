@@ -1,0 +1,63 @@
+# Wstępna klasyfikacja zgłoszeń z formularza mapy (issue z etykietą „zgłoszenie”):
+# model językowy przez Copilot CLI ocenia kategorię i pewność, a skrypt nadaje etykiety
+# i komentarz z podpowiedzią dla operatora. Model nie zmienia danych ani kodu.
+# Wymaga sekretu COPILOT_PAT: fine-grained PAT konta z Copilotem, uprawnienie „Copilot Requests”.
+
+name: Triage zgłoszeń
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+    inputs:
+      issue:
+        description: Numer issue do ponownej klasyfikacji
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: triage-${{ github.event.issue.number || inputs.issue }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.issue.labels.*.name, 'zgłoszenie')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      ISSUE: ${{ github.event.issue.number || inputs.issue }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Pobierz issue i zbuduj prompt
+        id: prompt
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${ISSUE}" > issue.json
+          node tools/triage/prompt.mjs issue.json triage
+          echo "model=$(jq -r .model tools/triage/config.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Zainstaluj Copilot CLI
+        run: npm install -g @github/copilot
+
+      - name: Klasyfikacja
+        id: model
+        uses: actions/ai-inference@v1
+        env:
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PAT }}
+        with:
+          prompt-file: triage/prompt.txt
+          system-prompt-file: triage/system.txt
+          model: ${{ steps.prompt.outputs.model }}
+
+      - name: Etykiety i komentarz
+        run: node tools/triage/apply.mjs "${{ steps.model.outputs.response-file }}" "$ISSUE"

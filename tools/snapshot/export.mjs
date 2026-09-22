@@ -31,17 +31,27 @@ async function fetchTable(table, order = 'id') {
   return res.json();
 }
 
-/* Mapowanie rekordów bazy na format snapshotu (ten sam co w src/data.js). */
+const text = (v) => (typeof v === 'string' ? v : '');
+
+/* Mapowanie rekordów bazy na format snapshotu (ten sam co w src/data.js). Pola tekstowe
+ * są normalizowane do łańcuchów, żeby null z bazy nie trafił do snapshotu jako null. */
 const mapZbiornik = (r) => ({
-  n: r.n,
+  n: text(r.n),
   p: [r.lat, r.lon],
-  ha: r.ha || '—',
-  t: r.t || '',
-  r: r.r || '',
-  a: r.a || 0,
+  ha: text(r.ha) || '—',
+  t: text(r.t),
+  r: text(r.r),
+  a: r.a ? 1 : 0,
 });
-const mapRiver = (r) => ({ n: r.n, c: r.c, o: r.o, d: r.d, r: r.r, pts: r.pts });
-const mapGranica = (r) => ({ n: r.n, p: [r.lat, r.lon], d: r.d });
+const mapRiver = (r) => ({
+  n: text(r.n),
+  c: r.c === 'gor' ? 'gor' : 'niz',
+  o: text(r.o),
+  d: text(r.d),
+  r: text(r.r),
+  pts: Array.isArray(r.pts) ? r.pts : [],
+});
+const mapGranica = (r) => ({ n: text(r.n), p: [r.lat, r.lon], d: text(r.d) });
 
 const vertexCount = (rivers) => rivers.reduce((s, r) => s + (Array.isArray(r.pts) ? r.pts.length : 0), 0);
 

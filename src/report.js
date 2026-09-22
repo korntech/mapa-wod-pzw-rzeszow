@@ -53,9 +53,7 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   ]) {
     const group = document.createElement('optgroup');
     group.label = label;
-    options
-      .filter((o) => o.typ === typ)
-      .forEach((o) => group.appendChild(new Option(o.nazwa, o.key)));
+    options.filter((o) => o.typ === typ).forEach((o) => group.appendChild(new Option(o.nazwa, o.key)));
     select.appendChild(group);
   }
 
@@ -82,11 +80,13 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   }
 
   function showSuccess({ numer, url }) {
+    done.querySelector('[data-numer]').textContent = numer;
     const link = done.querySelector('a');
     link.href = url;
-    link.textContent = `#${numer}`;
+    link.textContent = `zgłoszenie #${numer} na GitHubie`;
     form.style.display = 'none';
     done.style.display = 'block';
+    done.querySelector('[data-close]').focus();
   }
 
   form.addEventListener('submit', async (ev) => {
@@ -121,6 +121,9 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   modal.onclick = () => {
     modal.style.display = 'none';
   };
+  done.querySelector('[data-close]').addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
   modal.firstElementChild.onclick = (e) => e.stopPropagation();
 
   return { open };

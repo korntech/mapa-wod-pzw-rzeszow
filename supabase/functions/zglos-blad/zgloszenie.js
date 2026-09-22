@@ -1,7 +1,15 @@
 /* Walidacja zgłoszenia błędu i treść issue na GitHubie. Moduł bez zależności,
  * współdzielony przez stronę (podgląd i link zapasowy) i funkcję Supabase. */
 
-export const LIMITY = { opisMin: 10, opisMax: 2000, kontaktMax: 200, nazwaMax: 200, naGodzine: 5 };
+export const LIMITY = {
+  opisMin: 10,
+  opisMax: 2000,
+  kontaktMax: 200,
+  nazwaMax: 200,
+  naGodzine: 5,
+  lacznieNaGodzine: 60,
+  retencjaDni: 30,
+};
 
 export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka' };
 
@@ -41,6 +49,13 @@ export function issueContent(report, mapUrl) {
     `**Współrzędne:** ${report.lat}, ${report.lon}`,
   ];
   if (report.kontakt) lines.push(`**Kontakt:** ${cytat(report.kontakt).slice(2)}`);
-  lines.push('', '**Opis zgłoszenia:**', '', cytat(report.opis), '', `_Zgłoszono z formularza na mapie: ${mapUrl}_`);
+  lines.push(
+    '',
+    '**Opis zgłoszenia:**',
+    '',
+    cytat(report.opis),
+    '',
+    `_Zgłoszono z formularza na mapie: ${mapUrl}_`
+  );
   return { title: `Zgłoszenie: ${report.nazwa}`, body: lines.join('\n') };
 }

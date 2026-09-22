@@ -1,163 +1,159 @@
 # Mapa wód PZW — Okręg Rzeszów
 
-Interaktywna mapa łowisk Polskiego Związku Wędkarskiego Okręgu w Rzeszowie na podstawie
-oficjalnego „Wykazu wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania” (2026).
+Interaktywna mapa łowisk Polskiego Związku Wędkarskiego Okręgu w Rzeszowie, opracowana na podstawie
+oficjalnego „Wykazu wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania”.
 
 **Mapa: <https://korntech.github.io/mapa-wod-pzw-rzeszow/>**
 
-## Co zawiera
+Na mapie są:
 
-- **zbiorniki** (stawy, wyrobiska pożwirowe, zbiorniki zaporowe) z powierzchnią, typem i zasadami połowu,
-- **odcinki rzek** — wody nizinne oraz kraina pstrąga i lipienia, z granicami obwodów rybackich i zasadami,
+- **zbiorniki** (stawy, wyrobiska, zbiorniki zaporowe) z powierzchnią, typem i zasadami połowu,
+- **odcinki rzek** — wody nizinne oraz kraina pstrąga i lipienia, z opisem granic obwodów i zasadami,
 - **punkty granic obwodów** i punkty orientacyjne,
-- wyszukiwarkę (także bez polskich znaków), filtry warstw, listę boczną, „Najbliżej mnie”
-  z sortowaniem wg odległości i link „Nawiguj” otwierający domyślną nawigację telefonu,
-- trzy podkłady Głównego Urzędu Geodezji i Kartografii: mapa ogólnogeograficzna, mapa topograficzna, ortofotomapa,
-- **wykaz do druku** (`wykaz.html`): tabele zbiorników, rzek i granic ze współrzędnymi, oznaczeniem lokalizacji
-  przybliżonych i długością odcinków; przycisk „Pobierz PDF” zapisuje zestawienie w formacie A4.
+- wyszukiwarka (działa też bez polskich znaków), filtry warstw, lista boczna, „Najbliżej mnie”
+  (sortowanie wg odległości) i „Nawiguj” (aplikacja nawigacyjna telefonu),
+- trzy podkłady GUGiK: mapa ogólna, mapa topograficzna, ortofotomapa,
+- **wykaz do druku** (`wykaz.html`) — tabele zbiorników, rzek i granic ze współrzędnymi; „Pobierz PDF” zapisuje A4.
 
 ## Zastrzeżenie
 
 Mapa ma charakter **poglądowy**. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠),
-a granice obwodów na rzekach wyznaczono orientacyjnie. Przed wędkowaniem zweryfikuj zasady
-w aktualnym zezwoleniu i w [oficjalnym wykazie wód](https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku).
+a granice obwodów na rzekach wyznaczono orientacyjnie. Przed wędkowaniem obowiązuje aktualne zezwolenie
+i [oficjalny wykaz wód](https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku).
+Projekt jest niezależny i nie jest formalnie związany z PZW.
 
-## Architektura
+## Jak to działa
 
 | Element | Rozwiązanie |
 |---|---|
-| Strona | statyczna (Vite + Leaflet), hostowana na GitHub Pages |
-| Dane łowisk | baza Supabase (tabele `zbiorniki`, `rivers`, `granice`); publiczny odczyt, zapis tylko dla operatorów z allow-listy |
-| Snapshot | `public/data.json` — nocna kopia bazy w repozytorium; strona używa go, gdy baza nie odpowiada |
-| Podkłady | usługi WMTS Geoportalu w państwowym układzie EPSG:2180 (siatka, rozdzielczości i warstwy w `config.json`) |
-| Geometrie | BDOT10k (GUGiK) — przebiegi rzek i kontury zbiorników; pipeline w `tools/bdot/` |
-| Panel operatora | `admin.html` — logowanie e-mail + hasło (Supabase Auth), edycja punktów i przebiegów rzek |
-| Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium; bez konta GitHub |
+| Strona | statyczna (Vite + Leaflet) na GitHub Pages |
+| Dane łowisk | baza Supabase (tabele `zbiorniki`, `rivers`, `granice`): publiczny odczyt, zapis tylko dla operatorów z allow-listy |
+| Snapshot | `public/data.json` — nocna kopia bazy w repozytorium; mapa wczytuje snapshot, a następnie nadpisuje go danymi z bazy (każdą warstwę osobno), więc działa także przy niedostępnej bazie |
+| Podkłady i geometrie | usługi WMTS Geoportalu (EPSG:2180) oraz przebiegi rzek i kontury zbiorników z BDOT10k (GUGiK) |
+| Panel operatora | `admin.html` — logowanie e-mail + hasło (Supabase Auth), edycja pinezek, przebiegów rzek i atrybutów |
+| Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium (bez konta GitHub) |
 
-W czasie działania strona łączy się wyłącznie z Geoportalem GUGiK i własną bazą.
-
-## Konfiguracja
-
-Wszystkie adresy i parametry zmienne są w jednym pliku **`config.json`**:
-
-| Sekcja | Zawartość |
-|---|---|
-| `site` | ścieżka bazowa i adres publiczny strony |
-| `supabase` | adres projektu, klucz publiczny (`anonKey`), nazwy tabel |
-| `snapshot` | nazwy plików snapshotu i kandydatów akwenów, obrys i progi walidacji, metadane źródeł |
-| `map` | środek i poziomy zoomu, definicja układu współrzędnych i siatki kafli |
-| `basemaps` | adres usługi WMTS, warstwy podkładów, podkład domyślny mapy i panelu, komunikat awaryjny |
-| `links` | linki zewnętrzne używane na stronie (wykaz PZW, repozytorium, szablon nawigacji, nazwa funkcji zgłoszeń `report.function` i zapasowy formularz `report.issues`) |
-
-Klucz `anonKey` jest z założenia jawny (trafia do przeglądarki); o bezpieczeństwie zapisu
-decydują reguły RLS w bazie (`db/schema.sql`). Przy pustej sekcji `supabase` mapa działa
-wyłącznie na snapshocie, a panel operatora wyświetla komunikat o braku konfiguracji.
+W czasie działania strona łączy się wyłącznie z Geoportalem GUGiK i własną bazą (wymusza to CSP w buildzie).
 
 ## Uruchomienie lokalne
+
+Wymagany Node 20+.
 
 ```bash
 npm install
 npm run dev        # serwer deweloperski
 npm run build      # wersja produkcyjna do dist/
-npm test           # testy (walidacja zgłoszeń, formularz)
 npm run preview    # podgląd dist/ pod ścieżką z config.json
-npm run check      # składnia skryptów + walidacja snapshotu (to samo robi CI)
+npm test           # testy (walidacja zgłoszeń, formularz)
+npm run check      # składnia skryptów, walidacja snapshotu, testy (CI robi to samo, plus build)
 ```
 
-Po przejściu na własną domenę ustaw `site.basePath` w `config.json` (albo `PZW_BASE=/` przy budowaniu).
+Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.json`
+(alternatywnie `PZW_BASE=/` przy budowaniu).
 
 ## Struktura repozytorium
 
 | Ścieżka | Zawartość |
 |---|---|
-| `index.html`, `admin.html`, `wykaz.html` | strony (HTML + style) |
-| `src/main.js`, `src/admin.js`, `src/wykaz.js` | logika mapy publicznej, panelu operatora i wykazu do druku |
-| `src/geo.js` | odległości, długości linii, format współrzędnych |
-| `src/config.js` | dostęp do `config.json` |
-| `src/crs.js`, `src/basemaps.js` | układ współrzędnych i podkłady WMTS |
-| `src/data.js` | warstwa danych: baza z zapasem w postaci snapshotu |
+| `index.html`, `admin.html`, `wykaz.html` | strony: mapa publiczna, panel operatora, wykaz do druku |
+| `src/` | logika stron (`main.js`, `admin.js`, `wykaz.js`), warstwa danych (`data.js`), układ współrzędnych i podkłady (`crs.js`, `basemaps.js`), obliczenia (`geo.js`), dostęp do konfiguracji (`config.js`) |
 | `public/data.json` | snapshot bazy (odświeżany co noc) |
-| `tools/snapshot/` | eksport, walidacja i generator SQL zasilającego bazę |
-| `tools/bdot/` | pipeline geometrii z BDOT10k |
-| `tools/qa/` | QA harness: porównanie danych z oficjalnym wykazem PZW (PDF) |
+| `public/kandydaci-zbiorniki.json` | propozycje akwenów z BDOT10k dla zbiorników o lokalizacji przybliżonej (używane w panelu) |
+| `config.json` | cała konfiguracja (patrz niżej) |
 | `db/` | schemat bazy i migracje |
 | `supabase/functions/` | funkcja `zglos-blad` (zgłoszenia błędów → GitHub Issues) |
-| `docs/` | raporty jakości danych i specyfikacje |
+| `tools/snapshot/` | eksport bazy do snapshotu, walidacja snapshotu, generator SQL zasilającego bazę |
+| `tools/bdot/` | pipeline geometrii z BDOT10k — [opis](tools/bdot/README.md) |
+| `tools/qa/` | porównanie danych z oficjalnym wykazem PZW (PDF, OCR) — [opis](tools/qa/README.md) |
+| `tools/triage/` | klasyfikacja zgłoszeń z formularza (prompt, etykiety, komentarz) |
+| `docs/instrukcja-operatora.md` | instrukcja obsługi panelu dla operatora Okręgu |
 | `.github/workflows/` | CI, publikacja, snapshot, healthcheck |
 
-## Struktura snapshotu (`public/data.json`)
+Format snapshotu (`public/data.json`):
 
 | Klucz | Zawartość | Pola rekordu |
 |---|---|---|
 | `zb` | zbiorniki | `n` nazwa, `p` [lat, lon], `ha` powierzchnia, `t` typ, `r` zasady, `a` 1 = lokalizacja przybliżona |
 | `rivers` | odcinki rzek | `n` nazwa, `c` `"niz"` / `"gor"`, `o` obwód, `d` opis granic, `r` zasady, `pts` [[lat, lon], …] |
 | `granice` | granice obwodów / punkty orientacyjne | `n` nazwa, `p` [lat, lon], `d` opis |
+| `meta` | źródła danych, uwaga licencyjna, `snapshot` — data eksportu (pokazywana na stronie jako „Stan danych”) |
+
+## Konfiguracja (`config.json`)
+
+| Sekcja | Zawartość |
+|---|---|
+| `site` | ścieżka bazowa i adres publiczny strony |
+| `supabase` | adres projektu, klucz publiczny (`anonKey`), nazwy tabel |
+| `snapshot` | nazwy plików snapshotu i kandydatów, obrys i progi walidacji, metadane źródeł |
+| `map` | środek i poziomy zoomu, układ współrzędnych i siatka kafli |
+| `basemaps` | adres usługi WMTS, warstwy podkładów, podkład domyślny mapy i panelu, komunikat awaryjny |
+| `links` | linki zewnętrzne: wykaz PZW, repozytorium, instrukcja, szablony nawigacji, nazwa funkcji zgłoszeń `report.function` i zapasowy formularz `report.issues` |
+
+Klucz `anonKey` jest z założenia jawny (trafia do przeglądarki); o bezpieczeństwie zapisu decydują reguły RLS
+w bazie (`db/schema.sql`). Przy pustej sekcji `supabase` mapa działa wyłącznie na snapshocie, a panel
+operatora pokazuje komunikat o braku konfiguracji.
 
 ## Baza danych i panel operatora
 
-### Pierwsze uruchomienie
+Pierwsze uruchomienie:
 
-1. Załóż projekt na <https://supabase.com> (region Frankfurt); w **Project Settings → API**
-   skopiuj adres projektu i klucz publiczny do sekcji `supabase` w `config.json`.
+1. Załóż projekt na <https://supabase.com>; z **Project Settings → API** skopiuj adres projektu i klucz
+   publiczny do sekcji `supabase` w `config.json`.
 2. W **SQL Editor** uruchom [`db/schema.sql`](db/schema.sql) (tabele, allow-lista `operators`, RLS, uprawnienia).
-3. Zasil bazę danymi ze snapshotu: `npm run seed-sql > seed.sql` i uruchom wynik w SQL Editor.
-4. W **Authentication → Sign In / Providers** wyłącz publiczną rejestrację; konta operatorów
-   (e-mail + hasło) zakładaj w **Authentication → Users**.
-5. Każdego operatora dopisz do allow-listy:
+3. Zasil bazę danymi ze snapshotu: `npm run seed-sql > seed.sql`, wynik uruchom w SQL Editor.
+4. W **Authentication** wyłącz publiczną rejestrację; konta operatorów (e-mail + hasło) zakładaj w **Authentication → Users**.
+5. Każdego operatora dopisz do allow-listy — samo konto nie wystarcza:
    ```sql
    insert into public.operators (email) values ('operator@przyklad.pl');
    ```
-   Tylko konta z tej listy mogą zapisywać dane — samo konto nie wystarcza.
 
-Panel: `…/admin.html`. Operator edytuje zbiorniki i granice (pinezki), przebiegi rzek
-(wierzchołki, [Leaflet-Geoman](https://geoman.io/)) oraz atrybuty; zmiany są widoczne na mapie po odświeżeniu.
-Przy zbiorniku o lokalizacji przybliżonej panel pokazuje kandydujące akweny z BDOT10k
-(`public/kandydaci-zbiorniki.json`: powierzchnia, odległość, ocena); kliknięcie przenosi pinezkę na wybrany akwen.
+Pliki `db/migrate-*.sql` to jednorazowe zmiany dla **istniejącej** bazy (na świeżej bazie wystarczy
+`schema.sql` + seed). Uruchamia się je raz, w kolejności dat, w SQL Editor; po uruchomieniu na bazie
+produkcyjnej plik migracji usuwa się z repozytorium (historia zostaje w git).
 
-### Migracje
+Zabezpieczenia w bazie (`db/schema.sql`): publiczny odczyt przez RLS, zapis wyłącznie dla potwierdzonych
+kont z allow-listy `operators`, ograniczenia CHECK na długości pól, współrzędne i kształt geometrii oraz
+tabela `historia_zmian` (kto, kiedy, stan przed i po), niedostępna z API — do odtwarzania danych po pomyłce.
 
-Każdą uruchamia się raz w SQL Editor; skrypty są idempotentne.
+Panel: `…/admin.html`. Obsługę panelu opisuje [instrukcja operatora](docs/instrukcja-operatora.md).
+Zmiany zapisane w panelu są widoczne na mapie po odświeżeniu strony.
 
-| Migracja | Zakres | Stan |
-|---|---|---|
-| `db/migrate-2026-09-20-bdot10k.sql` | geometrie rzek z BDOT10k, 10 zbiorników przeniesionych na akweny | uruchomiona |
-| `db/migrate-2026-09-21-uprawnienia.sql` | zawężenie uprawnień do allow-listy i funkcji pomocniczych | **do uruchomienia** |
-| `db/migrate-2026-09-21-kraina-pstraga.sql` | trzy cieki krainy pstrąga z wykazu (Słotowski, Dopływ z Połomii, Czarna (Grabinka)) i doprecyzowane zasady dwóch zbiorników | **do uruchomienia** |
-| `db/migrate-2026-09-21-zgloszenia.sql` | tabela `zgloszenia` (dziennik zgłoszeń i limit na adres IP) | **do uruchomienia** |
+## Zgłoszenia błędów z mapy
 
-### Zgłoszenia błędów z mapy
-
-Link „Zgłoś błąd” w popupie łowiska (i w oknie „O mapie”) otwiera formularz: wybór zbiornika
-lub rzeki, opis, opcjonalny kontakt. Strona wysyła zgłoszenie do funkcji Supabase
-[`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts), która sprawdza
-treść, ogranicza liczbę zgłoszeń do 5 na godzinę z jednego adresu IP, zakłada issue z etykietą
-`zgłoszenie` i zapisuje wpis w tabeli `zgloszenia`. Zgłaszający nie potrzebuje konta GitHub.
-Gdy funkcja nie odpowiada, formularz pokazuje zapasowy link do formularza issue na GitHubie
-z gotową treścią. Walidacja i treść issue są w module
+„Zgłoś błąd” w popupie łowiska i w oknie „O mapie” otwiera formularz (zbiornik lub rzeka, opis,
+opcjonalny kontakt). Stronę obsługuje funkcja Supabase [`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts):
+sprawdza treść, ogranicza liczbę zgłoszeń z jednego adresu IP, zakłada issue z etykietą `zgłoszenie`
+i zapisuje wpis w tabeli `zgloszenia`. Gdy funkcja nie odpowiada, formularz pokazuje zapasowy link
+do issue na GitHubie z gotową treścią. Walidacja i treść issue są w module
 [`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js) współdzielonym ze stroną (testy: `npm test`).
 
-Wdrożenie (raz):
+Wdrożenie funkcji (raz): token GitHub *fine-grained* ograniczony do tego repozytorium
+z uprawnieniem **Issues: Read and write**, sekrety i deploy przez CLI Supabase:
 
-1. Uruchom migrację `db/migrate-2026-09-21-zgloszenia.sql`.
-2. Na GitHubie utwórz token *fine-grained* ograniczony do tego repozytorium z uprawnieniem
-   **Issues: Read and write** (Settings → Developer settings → Personal access tokens).
-3. Ustaw sekrety i wdróż funkcję (CLI Supabase przez `npx`, po `npx supabase login`):
-   ```bash
-   npx supabase secrets set --project-ref <ref> GITHUB_TOKEN=github_pat_… \
-     GITHUB_REPO=korntech/mapa-wod-pzw-rzeszow \
-     MAP_URL=https://korntech.github.io/mapa-wod-pzw-rzeszow/ \
-     ALLOWED_ORIGINS=https://korntech.github.io
-   npx supabase functions deploy zglos-blad --project-ref <ref>
-   ```
-   `supabase/config.toml` wyłącza dla tej funkcji wymóg JWT (formularz jest publiczny).
-   Token wygasa w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sekret ponownie.
+```bash
+npx supabase login
+npx supabase secrets set --project-ref <ref> GITHUB_TOKEN=github_pat_… \
+  GITHUB_REPO=korntech/mapa-wod-pzw-rzeszow \
+  MAP_URL=https://korntech.github.io/mapa-wod-pzw-rzeszow/ \
+  ALLOWED_ORIGINS=https://korntech.github.io
+npx supabase functions deploy zglos-blad --project-ref <ref>
+```
 
-## Kontrola zgodności z wykazem PZW (QA harness)
+`supabase/config.toml` wyłącza dla tej funkcji wymóg JWT (formularz jest publiczny). Token wygasa
+w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sekret ponownie.
 
-`tools/qa/` porównuje dane aplikacji z oficjalnym wykazem (skan PDF): OCR tabel, dopasowanie
-zbiorników, obwodów nizinnych i cieków krainy pstrąga, raport rozbieżności (powierzchnie, typy,
-granice, zasady). Uruchomienie i wymagania (tesseract z językiem polskim, poppler) — w
-[`tools/qa/README.md`](tools/qa/README.md). Plik PDF wykazu nie jest częścią repozytorium.
+## Wstępna klasyfikacja zgłoszeń (AI)
+
+Workflow `triage.yml` uruchamia się przy każdym nowym issue z etykietą `zgłoszenie`: buduje prompt
+z treści zgłoszenia, aktualnego rekordu z mapy i kandydatów akwenów z BDOT10k (`tools/triage/prompt.mjs`),
+pyta model przez Copilot CLI (`actions/ai-inference`) i nadaje etykiety `kategoria: …` oraz `pewność: …`
+wraz z komentarzem „co sprawdzić w panelu” (`tools/triage/apply.mjs`). Model niczego nie zmienia —
+decyzję podejmuje operator. Dozwolone kategorie, etykiety, model i treść promptu są w
+`tools/triage/config.json`; wartości spoza konfiguracji są odrzucane.
+
+Wymaga sekretu `COPILOT_PAT`: fine-grained personal access token konta z dostępem do Copilota,
+uprawnienie **Copilot Requests** (Settings → Developer settings → Personal access tokens).
+Ponowna klasyfikacja: Actions → „Triage zgłoszeń” → Run workflow → numer issue.
 
 ## Automatyzacje (GitHub Actions)
 
@@ -165,34 +161,29 @@ granice, zasady). Uruchomienie i wymagania (tesseract z językiem polskim, poppl
 
 | Workflow | Kiedy | Co robi |
 |---|---|---|
-| `ci.yml` | push i pull request | składnia skryptów, walidacja snapshotu, testy (`node --test`), build |
-| `deploy.yml` | push do `main` | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
-| `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie; utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot, job kończy się błędem i niczego nie nadpisuje |
-| `healthcheck.yml` | co 6 h | sprawdza stronę i bazę; przy awarii zakłada issue `awaria`, zamyka je, gdy kontrola przejdzie |
+| `ci.yml` | push do `main`, pull request | składnia skryptów, walidacja snapshotu, testy, build |
+| `deploy.yml` | push do `main`, po udanym snapshocie, ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
+| `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie; utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
+| `healthcheck.yml` | co 6 h, ręcznie | sprawdza stronę i bazę; przy awarii zakłada issue z etykietą `awaria` i zamyka je, gdy kontrola przejdzie |
+| `triage.yml` | nowe issue `zgłoszenie`, ręcznie | klasyfikacja zgłoszenia przez model, etykiety i komentarz dla operatora |
 
 `dependabot.yml` co tydzień proponuje aktualizacje zależności npm i akcji.
 
 ## Jak pomóc
 
-Zgłoś błąd przez formularz na mapie („Zgłoś błąd” w popupie łowiska) albo bezpośrednio przez [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues); poprawki mile widziane jako pull request.
-
-Znane braki:
-
-1. **27 zbiorników z `a:1`** ma lokalizację przybliżoną. Propozycje akwenów z BDOT10k są w
-   [`public/kandydaci-zbiorniki.json`](public/kandydaci-zbiorniki.json) (panel operatora pokazuje je przy zbiorniku), omówienie w [`docs/raport-zbiorniki.md`](docs/raport-zbiorniki.md);
-   wybór wymaga wiedzy lokalnej.
-2. **Trzebośnica** — BDOT10k nazywa ciek dopiero ok. 1,2 km poniżej punktu „od źródeł” z wykazu.
-3. **Granica obwodów Wisłok 3/4** (most kolejowy w Rzeszowie) jest przybliżona.
-4. **Nazewnictwo**: wykaz PZW „Stobnica”, BDOT10k „Stopnica” — tożsamość cieku potwierdzona geometrycznie.
-5. Pomysły: tryb offline (PWA), eksport GPX, zdjęcia łowisk.
-
+Błędy i propozycje: [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues) albo pull request.
 Danych merytorycznych (zasady, powierzchnie, granice) nie zmieniamy bez weryfikacji z oficjalnym wykazem PZW.
+
+Znane ograniczenia danych (szczegóły w Issues):
+
+- część zbiorników (`a: 1`) ma pinezkę w środku miejscowości, bo wykaz podaje tylko nazwę i gminę;
+  propozycje akwenów z BDOT10k są w `public/kandydaci-zbiorniki.json`, a wybór wymaga wiedzy lokalnej;
+- nazewnictwo cieków w BDOT10k bywa inne niż w wykazie (np. „Stobnica” / „Stopnica”);
+- granice obwodów na rzekach są orientacyjne.
 
 ## Licencja i źródła
 
 - Kod: [MIT](LICENSE).
-- Dane o łowiskach: opracowane na podstawie oficjalnego wykazu wód [Okręgu PZW w Rzeszowie](https://rzeszow.pzw.pl/) (2026).
+- Dane o łowiskach: opracowane na podstawie oficjalnego wykazu wód [Okręgu PZW w Rzeszowie](https://rzeszow.pzw.pl/).
 - Dane przestrzenne (podkłady, przebiegi rzek, kontury zbiorników): [Główny Urząd Geodezji i Kartografii](https://www.geoportal.gov.pl/),
   państwowy zasób geodezyjny i kartograficzny — bezpłatne do ponownego wykorzystania, wymagane podanie źródła.
-
-Projekt niezależny, niezwiązany formalnie z PZW.

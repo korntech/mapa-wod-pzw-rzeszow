@@ -15,8 +15,19 @@ import { getSupabase, signOut, esc } from './data.js';
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow });
 
-// Panel nie może być osadzany w ramce innej strony.
-if (window.top !== window.self) window.top.location = window.self.location;
+// Panel nie może być osadzany w ramce innej strony. Meta-CSP nie obsługuje frame-ancestors,
+// a GitHub Pages nie wysyła X-Frame-Options, więc obrona jest w skrypcie: strona w ramce jest
+// ukrywana i inicjalizacja przerwana także wtedy, gdy ramka z atrybutem sandbox zablokuje
+// przekierowanie okna nadrzędnego.
+if (window.top !== window.self) {
+  document.documentElement.style.display = 'none';
+  try {
+    window.top.location = window.self.location;
+  } catch {
+    /* sandbox bez allow-top-navigation — strona pozostaje ukryta */
+  }
+  throw new Error('Panel operatora nie działa w ramce.');
+}
 
 const $ = (id) => document.getElementById(id);
 const TYPES = {
@@ -46,6 +57,9 @@ function pts2arr(ll) {
   return ll.map((p) => [+p.lat.toFixed(5), +p.lng.toFixed(5)]);
 }
 
+document.querySelectorAll('a[data-link]').forEach((a) => {
+  if (LINKS[a.dataset.link]) a.href = LINKS[a.dataset.link];
+});
 sb = getSupabase();
 if (!sb) {
   $('overlay').innerHTML =
@@ -115,6 +129,12 @@ function onLogin(session) {
   $('email').textContent = session.user.email;
   setType('zb');
   loadAll();
+  checkOperator();
+}
+/** Konto spoza allow-listy może się zalogować, ale reguły RLS odrzucą każdy zapis — uprzedź o tym. */
+async function checkOperator() {
+  const { data, error } = await sb.rpc('is_operator');
+  if (!error && data === false) toast('To konto nie ma uprawnień do zapisu (brak na liście operatorów)');
 }
 $('logout').addEventListener('click', () => {
   signOut();
@@ -246,7 +266,9 @@ async function loadCandidates() {
     const res = await fetch(import.meta.env.BASE_URL + SNAPSHOT.candidatesFile);
     if (!res.ok) return;
     const data = await res.json();
-    for (const w of data.wyniki || []) candidates[w.nazwa] = w.kandydaci || [];
+    for (const w of data.wyniki || []) {
+      if (typeof w.nazwa === 'string' && Array.isArray(w.kandydaci)) candidates[w.nazwa] = w.kandydaci;
+    }
   } catch {
     candidates = {};
   }
@@ -254,7 +276,8 @@ async function loadCandidates() {
 
 function renderCandidates(o) {
   const box = $('kandbox');
-  const list = candidates[o.n] || [];
+  // Object.hasOwn: nazwa zbiornika taka jak "constructor" nie może trafić w prototyp obiektu.
+  const list = Object.hasOwn(candidates, o.n) ? candidates[o.n] : [];
   if (!list.length) {
     box.style.display = 'none';
     return;

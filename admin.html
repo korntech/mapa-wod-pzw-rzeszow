@@ -67,7 +67,7 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
 .card .btn{width:100%;margin-top:16px;padding:11px}
 .msg{font-size:13px;margin-top:12px;min-height:18px}
 .msg.err{color:#c62828}
-.card .back{display:block;margin-top:14px;text-align:center;font-size:13px;color:var(--dark)}
+.card .back{display:block;margin-top:10px;text-align:center;font-size:13px;color:var(--dark)}
 #toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#0d3b66;color:#fff;padding:10px 18px;border-radius:10px;font-size:13.5px;z-index:4000;opacity:0;transition:opacity .2s;pointer-events:none}
 #toast.show{opacity:1}
 @media(max-width:720px){#side{width:46%}#editor{width:100%}}
@@ -176,6 +176,7 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
   </form>
   <div class="msg" id="loginmsg"></div>
   <a class="back" href="index.html">← Wróć do mapy publicznej</a>
+  <a class="back" data-link="instrukcja" href="#" target="_blank" rel="noopener noreferrer">📖 Instrukcja operatora</a>
  </div>
 </div>
 

@@ -11,3 +11,7 @@ _prywatne/
 
 # Pliki robocze CLI Supabase
 supabase/.temp/
+
+# Prezentacje i dokumenty biurowe nie należą do repozytorium
+*.pptx
+*.docx

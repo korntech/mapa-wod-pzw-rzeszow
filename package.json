@@ -12,7 +12,7 @@
     "validate": "node tools/snapshot/validate.mjs",
     "seed-sql": "node tools/snapshot/seed-sql.mjs",
     "test": "node --test",
-    "check": "node --check vite.config.js && for f in tools/snapshot/*.mjs; do node --check \"$f\" || exit 1; done && npm run validate && npm test"
+    "check": "node --check vite.config.js && for f in tools/snapshot/*.mjs tools/triage/*.mjs; do node --check \"$f\" || exit 1; done && npm run validate && npm test"
   },
   "dependencies": {
     "@geoman-io/leaflet-geoman-free": "^2.18.3",
