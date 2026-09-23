@@ -4,6 +4,8 @@ dist/
 
 # Materiały robocze i dokumenty wewnętrzne (poza repozytorium)
 _prywatne/
+Claude outputs/
+claude-outputs/
 
 # Ustawienia narzędzi lokalnych
 .claude/
@@ -15,3 +17,4 @@ supabase/.temp/
 # Prezentacje i dokumenty biurowe nie należą do repozytorium
 *.pptx
 *.docx
+*.pdf
