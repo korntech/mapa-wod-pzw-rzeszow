@@ -11,6 +11,7 @@
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { loadConfig, snapshotPath } from './config.mjs';
+import { rodzajZbiornika, noKillZOpisu } from '../../src/zbiorniki-typ.js';
 
 const config = loadConfig();
 const OUT = process.env.PZW_OUT || snapshotPath(config);
@@ -40,6 +41,9 @@ const mapZbiornik = (r) => ({
   p: [r.lat, r.lon],
   ha: text(r.ha) || '—',
   t: text(r.t),
+  k: rodzajZbiornika(r.k, r.t),
+  nk: r.nk == null ? (noKillZOpisu(r.t, r.n) ? 1 : 0) : r.nk ? 1 : 0,
+  o: text(r.o),
   r: text(r.r),
   a: r.a ? 1 : 0,
 });

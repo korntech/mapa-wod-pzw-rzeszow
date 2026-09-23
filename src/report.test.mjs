@@ -179,6 +179,28 @@ test('wyjątek przy wysyłce pokazuje błąd sieci i odblokowuje przycisk', asyn
   assert.equal(el('button[type=submit]').disabled, false);
 });
 
+test('„Anuluj”, × i Escape zamykają formularz bez wysyłania', () => {
+  const { dom, form, el, calls } = setupForm();
+  form.open('zb:0');
+  el('#reportform button[data-close]').click();
+  assert.equal(el('#reportmodal').style.display, 'none');
+
+  form.open('zb:0');
+  el('#reportmodal h2 [data-close]').click();
+  assert.equal(el('#reportmodal').style.display, 'none');
+
+  form.open('zb:0');
+  dom.window.document.dispatchEvent(
+    new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true })
+  );
+  assert.equal(el('#reportmodal').style.display, 'none');
+
+  form.open('zb:0');
+  el('textarea[name=opis]').click();
+  assert.equal(el('#reportmodal').style.display, 'flex');
+  assert.equal(calls.length, 0);
+});
+
 test('ponowne otwarcie po sukcesie pokazuje czysty formularz', async () => {
   const { form, el, submit } = setupForm();
   form.open('zb:0');

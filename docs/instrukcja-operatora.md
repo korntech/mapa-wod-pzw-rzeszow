@@ -63,6 +63,21 @@ Podpowiedzi to tylko propozycje z automatu; ostatnie słowo należy do osoby zna
 Przy kilku sąsiadujących wyrobiskach (np. Mrowla–Lipie) lista kandydatów jest taka sama dla każdego
 łowiska i trzeba przypisać je z wiedzy lokalnej.
 
+## 4a. Rodzaj zbiornika, NO-KILL i obwód
+
+W formularzu zbiornika są cztery pola opisujące, czym jest łowisko:
+
+- **Opis typu (jak w wykazie)** — tekst z książeczki, np. „2 stawy”, „Zbiornik zaporowy”. Jest tylko
+  wyświetlany.
+- **Rodzaj** — lista: zbiornik zaporowy / wyrobisko pożwirowe / staw / inny. Steruje filtrem
+  „Zbiorniki” na mapie publicznej, więc warto, żeby był ustawiony świadomie (przy imporcie z wykazu
+  został wyprowadzony automatycznie z opisu typu — sprawdź go przy okazji edycji).
+- **Łowisko NO-KILL** — zaznaczone, gdy obowiązuje całkowity zakaz zabierania ryb. Na mapie publicznej
+  takie łowiska mają czerwoną etykietę i osobny filtr „tylko NO-KILL”.
+- **Obwód rybacki** (opcjonalnie) — np. „Wisłok 3”, jeśli zbiornik należy do obwodu. Pole podpowiada
+  nazwy obwodów już użyte przy rzekach. Gdy wędkarz wybierze na mapie obwód, zobaczy rzeki i zbiorniki
+  z tym obwodem; zbiornik bez wpisanego obwodu nie pokaże się w takim widoku.
+
 ## 5. Edycja rzek
 
 Zakładka **Rzeki**, kliknij rzekę na liście lub na mapie. Formularz zawiera: Nazwa, Kraina (nizinna /

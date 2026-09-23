@@ -12,6 +12,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { loadConfig, snapshotPath } from './config.mjs';
+import { RODZAJE_KLUCZE } from '../../src/zbiorniki-typ.js';
 
 const config = loadConfig();
 const FILE = process.argv[2] || snapshotPath(config);
@@ -86,7 +87,11 @@ for (const z of data.zb) {
   checkText(label, z, 'n', true);
   checkText(label, z, 't');
   checkText(label, z, 'ha');
+  checkText(label, z, 'o');
   checkText(label, z, 'r');
+  if (!RODZAJE_KLUCZE.includes(z.k))
+    errors.push(`${label}: rodzaj „${z.k}” (oczekiwane ${RODZAJE_KLUCZE.join('/')})`);
+  if (z.nk !== 0 && z.nk !== 1) errors.push(`${label}: pole nk musi być 0 lub 1`);
   if (!inBox(z.p)) errors.push(`${label}: współrzędne poza obrysem: ${JSON.stringify(z.p)}`);
   if (z.a !== 0 && z.a !== 1) errors.push(`${label}: pole a musi być 0 lub 1`);
 }

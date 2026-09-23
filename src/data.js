@@ -3,6 +3,7 @@
  * niezależnie, gdy jej odczyt z bazy się nie powiedzie. */
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE, SNAPSHOT } from './config.js';
+import { rodzajZbiornika, noKillZOpisu } from './zbiorniki-typ.js';
 
 const COLLECTIONS = ['zb', 'rivers', 'granice'];
 let client = null;
@@ -25,6 +26,9 @@ const mapZbiornik = (z) => ({
   p: [z.lat, z.lon],
   ha: text(z.ha) || '—',
   t: text(z.t),
+  k: rodzajZbiornika(z.k, z.t),
+  nk: z.nk == null ? (noKillZOpisu(z.t, z.n) ? 1 : 0) : z.nk ? 1 : 0,
+  o: text(z.o),
   r: text(z.r),
   a: z.a ? 1 : 0,
 });
@@ -45,7 +49,9 @@ export async function loadFromSupabase() {
   const { tables } = SUPABASE;
   try {
     const [zb, rivers, granice] = await Promise.all([
-      sb.from(tables.zbiorniki).select('n,lat,lon,ha,t,r,a').order('n'),
+      // Wszystkie kolumny: mapowanie wyprowadza k/nk z opisu t, gdy migracja rodzaju zbiornika
+      // nie została jeszcze uruchomiona (zamiast błędu 400 i cofnięcia do snapshotu).
+      sb.from(tables.zbiorniki).select('*').order('n'),
       sb.from(tables.rivers).select('n,c,o,d,r,pts').order('n'),
       sb.from(tables.granice).select('n,lat,lon,d').order('n'),
     ]);

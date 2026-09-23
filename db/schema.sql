@@ -6,7 +6,10 @@ create table if not exists public.zbiorniki (
   lat         double precision not null,           -- szerokość geogr.
   lon         double precision not null,           -- długość geogr.
   ha          text default '—',                    -- powierzchnia (jak w wykazie, np. "3,00")
-  t           text default '',                     -- typ
+  t           text default '',                     -- typ (opis z wykazu, np. "2 stawy")
+  k           text not null default 'inny',        -- rodzaj: zaporowy / pozwirowy / staw / inny
+  nk          smallint not null default 0,         -- 1 = łowisko NO-KILL
+  o           text default '',                     -- obwód rybacki (opcjonalnie, np. "Wisłok 3")
   r           text default '',                     -- zasady
   a           smallint not null default 0,         -- 1 = lokalizacja przybliżona
   updated_at  timestamptz not null default now()

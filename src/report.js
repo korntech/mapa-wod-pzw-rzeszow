@@ -120,13 +120,17 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
     }
   });
 
-  modal.onclick = () => {
+  function close() {
     modal.style.display = 'none';
-  };
-  done.querySelector('[data-close]').addEventListener('click', () => {
-    modal.style.display = 'none';
-  });
-  modal.firstElementChild.onclick = (e) => e.stopPropagation();
+  }
 
-  return { open };
+  /* Zamknięcie: tło, każdy element [data-close] (×, „Anuluj”, „Zamknij”) oraz Escape. */
+  modal.addEventListener('click', (ev) => {
+    if (ev.target === modal || ev.target.closest('[data-close]')) close();
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') close();
+  });
+
+  return { open, close };
 }

@@ -21,10 +21,23 @@ for (const table of Object.values(tables)) {
 }
 lines.push('');
 
-lines.push(`insert into public.${tables.zbiorniki} (n, lat, lon, ha, t, r, a) values`);
+lines.push(`insert into public.${tables.zbiorniki} (n, lat, lon, ha, t, k, nk, o, r, a) values`);
 lines.push(
   data.zb
-    .map((z) => row([literal(z.n), z.p[0], z.p[1], literal(z.ha), literal(z.t), literal(z.r), z.a ? 1 : 0]))
+    .map((z) =>
+      row([
+        literal(z.n),
+        z.p[0],
+        z.p[1],
+        literal(z.ha),
+        literal(z.t),
+        literal(z.k),
+        z.nk ? 1 : 0,
+        literal(z.o || ''),
+        literal(z.r),
+        z.a ? 1 : 0,
+      ])
+    )
     .join(',\n') + ';',
   ''
 );

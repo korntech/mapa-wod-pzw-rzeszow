@@ -2,6 +2,7 @@
 import { LINKS } from './config.js';
 import { loadData, esc } from './data.js';
 import { lengthKm, formatLatLon } from './geo.js';
+import { RODZAJ_NAZWA } from './zbiorniki-typ.js';
 
 const $ = (id) => document.getElementById(id);
 const byName = (a, b) => a.n.localeCompare(b.n, 'pl');
@@ -18,7 +19,8 @@ function zbiornikiRows(list) {
   return list
     .map(
       (z, i) =>
-        `<tr>${cell(i + 1)}<td class="name">${esc(z.n)}</td>${cell(z.t)}<td class="num">${esc(z.ha)}</td>` +
+        `<tr>${cell(i + 1)}<td class="name">${esc(z.n)}</td>${cell(z.t)}` +
+        `${cell((RODZAJ_NAZWA[z.k] || 'inny') + (z.nk ? ' · NO-KILL' : '') + (z.o ? ' · ' + z.o : ''))}<td class="num">${esc(z.ha)}</td>` +
         `<td class="coord">${esc(formatLatLon(z.p))}</td><td class="flag">${z.a ? 'TAK' : '—'}</td>${cell(z.r)}</tr>`
     )
     .join('');

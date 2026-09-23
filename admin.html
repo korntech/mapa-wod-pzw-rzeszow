@@ -108,16 +108,23 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
    <div class="grp for-zb">
     <div class="row">
      <div><label>Powierzchnia (ha)</label><input type="text" id="f_ha" placeholder="np. 3,00"></div>
-     <div><label>Typ</label><input type="text" id="f_t" placeholder="np. Zbiornik zaporowy"></div>
+     <div><label>Opis typu (jak w wykazie)</label><input type="text" id="f_t" placeholder="np. 2 stawy"></div>
     </div>
+    <div class="row">
+     <div><label>Rodzaj</label><select id="f_k"></select></div>
+     <div><label>Obwód rybacki (opcjonalnie)</label><input type="text" id="f_zo" placeholder="np. Wisłok 3" list="obwody"></div>
+    </div>
+    <label class="chk"><input type="checkbox" id="f_nk"> Łowisko NO-KILL</label>
+    <div class="hint">Rodzaj i NO-KILL sterują filtrami na mapie publicznej; opis typu jest tylko wyświetlany.</div>
    </div>
 
    <div class="grp for-rivers">
     <div class="row">
      <div><label>Kraina</label><select id="f_c"><option value="niz">nizinna</option><option value="gor">kraina pstrąga</option></select></div>
-     <div><label>Obwód</label><input type="text" id="f_o" placeholder="np. Wisłok 3"></div>
+     <div><label>Obwód</label><input type="text" id="f_o" placeholder="np. Wisłok 3" list="obwody"></div>
     </div>
    </div>
+   <datalist id="obwody"></datalist>
 
    <div class="grp for-rivers for-gr">
     <label>Opis granic / lokalizacji</label>

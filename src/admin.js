@@ -9,6 +9,7 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 import { BASEMAPS, LINKS, SUPABASE, SNAPSHOT } from './config.js';
 import { crs, ZOOM, CENTER } from './crs.js';
 import { initBasemaps } from './basemaps.js';
+import { RODZAJE, rodzajZbiornika, noKillZOpisu } from './zbiorniki-typ.js';
 import { getSupabase, signOut, esc } from './data.js';
 
 // Jawne ścieżki ikon znacznika (Leaflet nie wykrywa ich pod bundlerem).
@@ -154,6 +155,7 @@ async function loadAll() {
     return;
   }
   data = { zb: zb.data, rivers: rivers.data, granice: gr.data };
+  fillObwody();
   renderMarkers();
   renderList();
 }
@@ -204,7 +206,11 @@ function renderList() {
   $('list').innerHTML = f
     .map((o) => {
       let meta = '';
-      if (current === 'zb') meta = `${esc(o.t || '')} · ${esc(o.ha || '—')} ha`;
+      if (current === 'zb')
+        meta =
+          `${esc(o.t || RODZAJE[rodzajZbiornika(o.k, o.t)])} · ${esc(o.ha || '—')} ha` +
+          (o.o ? ' · ' + esc(o.o) : '') +
+          (o.nk ? ' · <b style="color:#c62828">NO-KILL</b>' : '');
       else if (current === 'rivers')
         meta = `${o.c === 'gor' ? 'kraina pstrąga' : 'nizinna'}${o.o ? ' · ' + esc(o.o) : ''} · ${(o.pts || []).length} pkt`;
       else meta = esc((o.d || '').slice(0, 60));
@@ -220,6 +226,18 @@ $('list').addEventListener('click', (e) => {
 });
 
 // --- ZAKŁADKI ---
+/** Słownik rodzajów w formularzu (raz) i podpowiedzi obwodów z danych. */
+$('f_k').innerHTML = Object.entries(RODZAJE)
+  .map(([k, label]) => `<option value="${k}">${esc(label)}</option>`)
+  .join('');
+function fillObwody() {
+  const set = new Set([...data.rivers, ...data.zb].map((o) => o.o).filter(Boolean));
+  $('obwody').innerHTML = [...set]
+    .sort((a, b) => a.localeCompare(b, 'pl', { numeric: true }))
+    .map((o) => `<option value="${esc(o)}"></option>`)
+    .join('');
+}
+
 function setType(t) {
   cancelEdit();
   current = t;
@@ -317,6 +335,9 @@ function fillForm(type, o, title) {
   $('f_n').value = o.n || '';
   $('f_ha').value = o.ha || '';
   $('f_t').value = o.t || '';
+  $('f_k').value = rodzajZbiornika(o.k, o.t);
+  $('f_nk').checked = o.nk == null ? noKillZOpisu(o.t, o.n) : !!o.nk;
+  $('f_zo').value = type === 'zb' ? o.o || '' : '';
   $('f_r').value = o.r || '';
   $('f_a').checked = !!o.a;
   $('f_c').value = o.c || 'niz';
@@ -406,6 +427,9 @@ $('esave').addEventListener('click', async () => {
       n: $('f_n').value.trim(),
       ha: $('f_ha').value.trim() || '—',
       t: $('f_t').value.trim(),
+      k: $('f_k').value,
+      nk: $('f_nk').checked ? 1 : 0,
+      o: $('f_zo').value.trim(),
       r: $('f_r').value.trim(),
       a: $('f_a').checked ? 1 : 0,
       lat,

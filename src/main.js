@@ -7,6 +7,8 @@ import { initBasemaps } from './basemaps.js';
 import { loadData, getSupabase, esc } from './data.js';
 import { waterOptions, initReportForm } from './report.js';
 import { distanceKm } from './geo.js';
+import { RODZAJE, RODZAJ_NAZWA } from './zbiorniki-typ.js';
+import { createFilters, passesFilters, obwodyList, extraFiltersActive } from './filtry.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,10 +26,12 @@ function initInfoModal() {
   $('infobtn').onclick = () => {
     modal.style.display = 'flex';
   };
-  modal.onclick = () => {
-    modal.style.display = 'none';
-  };
-  modal.firstElementChild.onclick = (e) => e.stopPropagation();
+  modal.addEventListener('click', (ev) => {
+    if (ev.target === modal || ev.target.closest('[data-close]')) modal.style.display = 'none';
+  });
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Escape') modal.style.display = 'none';
+  });
 }
 
 /** Adres nawigacji do punktu; szablon zależny od systemu urządzenia. */
@@ -39,8 +43,9 @@ function navigationUrl([lat, lon], name) {
     .replaceAll('{name}', encodeURIComponent(name));
 }
 
-function popupHtml({ title, tag, tagColor, body, rules, approx, position, reportKey }) {
+function popupHtml({ title, tag, tagColor, body, rules, approx, position, reportKey, nokill }) {
   let html = `<h3>${esc(title)}</h3><span class="tag" style="background:${tagColor}">${esc(tag)}</span>`;
+  if (nokill) html += '<span class="tag nk">NO-KILL</span>';
   if (approx) html += '<div class="approx">⚠ lokalizacja przybliżona</div>';
   html += `<div>${esc(body)}</div>`;
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
@@ -59,11 +64,12 @@ const normalize = (s) =>
 
 /** Buduje warstwy i wpisy listy z danych; zwraca wpisy do wyszukiwarki. */
 function buildLayers(map, data) {
+  /* Wszystkie grupy są na mapie; o widoczności pojedynczych obiektów decydują filtry (applyFilters). */
   const layers = {
     zb: L.layerGroup().addTo(map),
     niz: L.layerGroup().addTo(map),
     gor: L.layerGroup().addTo(map),
-    gr: L.layerGroup(),
+    gr: L.layerGroup().addTo(map),
   };
   const entries = [];
 
@@ -75,7 +81,8 @@ function buildLayers(map, data) {
       fillColor: COLORS.zb,
       fillOpacity: 0.95,
     });
-    const tag = z.t + (z.ha !== '—' ? ` · ${z.ha} ha` : '');
+    const tag =
+      (z.t || RODZAJ_NAZWA[z.k]) + (z.ha !== '—' ? ` · ${z.ha} ha` : '') + (z.o ? ` · obwód ${z.o}` : '');
     marker.bindPopup(
       popupHtml({
         title: z.n,
@@ -86,15 +93,19 @@ function buildLayers(map, data) {
         approx: z.a,
         position: z.p,
         reportKey: `zb:${i}`,
+        nokill: z.nk,
       })
     );
-    marker.addTo(layers.zb);
     entries.push({
       f: 'zb',
+      kind: z.k,
+      nokill: !!z.nk,
+      obwod: z.o || '',
       name: z.n,
-      sub: `${z.t} · ${z.ha} ha`,
+      sub: `${z.t} · ${z.ha} ha${z.o ? ' · ' + z.o : ''}`,
       latlng: z.p,
       target: marker,
+      layer: layers.zb,
       zoom: ZOOM.zbiornik,
     });
   });
@@ -121,7 +132,6 @@ function buildLayers(map, data) {
         reportKey: `rzeka:${i}`,
       })
     );
-    line.addTo(layers[kind]);
     let label = r.n;
     if (nameCount[r.n] > 1) {
       nameSeen[r.n] = (nameSeen[r.n] || 0) + 1;
@@ -129,10 +139,12 @@ function buildLayers(map, data) {
     }
     entries.push({
       f: kind,
+      obwod: r.o || '',
       name: label,
       sub: r.d.slice(0, 70) + '…',
       latlng: mid,
       target: line,
+      layer: layers[kind],
       zoom: ZOOM.okolica,
     });
   });
@@ -146,13 +158,13 @@ function buildLayers(map, data) {
       fillOpacity: 0.95,
     });
     marker.bindPopup(`<h3>${esc(g.n)}</h3><div style="font-size:12px">${esc(g.d)}</div>`);
-    marker.addTo(layers.gr);
     entries.push({
       f: 'gr',
       name: g.n,
       sub: g.d.slice(0, 60) + '…',
       latlng: g.p,
       target: marker,
+      layer: layers.gr,
       zoom: ZOOM.granica,
     });
   });
@@ -161,7 +173,8 @@ function buildLayers(map, data) {
 }
 
 function initUi(map, layers, entries) {
-  const active = new Set(['zb', 'niz', 'gor']);
+  const filters = createFilters();
+  const { active } = filters;
   const listEl = $('list');
   const countEl = $('count');
   const searchEl = $('search');
@@ -171,7 +184,7 @@ function initUi(map, layers, entries) {
   function render() {
     const q = normalize(searchEl.value.trim());
     const items = entries.filter(
-      (e) => active.has(e.f) && (!q || normalize(e.name + ' ' + e.sub).includes(q))
+      (e) => passesFilters(e, filters) && (!q || normalize(e.name + ' ' + e.sub).includes(q))
     );
     if (userPos) {
       items.forEach((e) => {
@@ -184,6 +197,7 @@ function initUi(map, layers, entries) {
       .map(
         (e) =>
           `<div class="item" data-i="${entries.indexOf(e)}"><span class="dot" style="background:${COLORS[e.f]}"></span><b>${esc(e.name)}</b>` +
+          (e.nokill ? '<span class="nk">NO-KILL</span>' : '') +
           (e.km !== undefined
             ? ` <span style="color:#0d3b66;font-size:12px">· ${e.km.toFixed(1)} km</span>`
             : '') +
@@ -201,21 +215,81 @@ function initUi(map, layers, entries) {
     e.target.openPopup();
   });
 
-  document.querySelectorAll('.chip').forEach((chip) =>
+  /** Dodaje do mapy obiekty przechodzące filtry, zdejmuje pozostałe; potem odświeża listę. */
+  function applyFilters() {
+    entries.forEach((e) => {
+      const show = passesFilters(e, filters);
+      if (show && !e.layer.hasLayer(e.target)) e.layer.addLayer(e.target);
+      else if (!show && e.layer.hasLayer(e.target)) e.layer.removeLayer(e.target);
+    });
+    $('morebtn').classList.toggle('active', extraFiltersActive(filters));
+    render();
+  }
+
+  const toggleSet = (set, key, chip) => {
+    if (set.has(key)) {
+      set.delete(key);
+      chip.classList.remove('on');
+    } else {
+      set.add(key);
+      chip.classList.add('on');
+    }
+  };
+
+  document.querySelectorAll('.chip[data-f]').forEach((chip) =>
     chip.addEventListener('click', () => {
-      const f = chip.dataset.f;
-      if (active.has(f)) {
-        active.delete(f);
-        chip.classList.remove('on');
-        map.removeLayer(layers[f]);
-      } else {
-        active.add(f);
-        chip.classList.add('on');
-        map.addLayer(layers[f]);
-      }
-      render();
+      toggleSet(active, chip.dataset.f, chip);
+      applyFilters();
     })
   );
+
+  // Rodzaje zbiorników + NO-KILL.
+  const kindsEl = $('kinds');
+  kindsEl.innerHTML =
+    Object.entries(RODZAJE)
+      .map(([k, label]) => `<span class="chip on" data-k="${k}">${esc(label)}</span>`)
+      .join('') + '<span class="chip" data-nk>tylko NO-KILL</span>';
+  kindsEl.querySelectorAll('.chip[data-k]').forEach((chip) =>
+    chip.addEventListener('click', () => {
+      toggleSet(filters.kinds, chip.dataset.k, chip);
+      applyFilters();
+    })
+  );
+  kindsEl.querySelector('.chip[data-nk]').addEventListener('click', (ev) => {
+    filters.nokillOnly = !filters.nokillOnly;
+    ev.currentTarget.classList.toggle('on', filters.nokillOnly);
+    applyFilters();
+  });
+
+  // Obwód rybacki.
+  const obwodEl = $('obwod');
+  obwodyList(entries).forEach((o) => {
+    const opt = document.createElement('option');
+    opt.value = o;
+    opt.textContent = o;
+    obwodEl.appendChild(opt);
+  });
+  obwodEl.addEventListener('change', () => {
+    filters.obwod = obwodEl.value;
+    applyFilters();
+  });
+
+  $('resetbtn').addEventListener('click', () => {
+    Object.keys(RODZAJE).forEach((k) => filters.kinds.add(k));
+    filters.nokillOnly = false;
+    filters.obwod = '';
+    obwodEl.value = '';
+    kindsEl.querySelectorAll('.chip[data-k]').forEach((c) => c.classList.add('on'));
+    kindsEl.querySelector('.chip[data-nk]').classList.remove('on');
+    applyFilters();
+  });
+
+  $('morebtn').addEventListener('click', () => {
+    const more = $('more');
+    more.hidden = !more.hidden;
+    $('morebtn').setAttribute('aria-expanded', String(!more.hidden));
+    $('morebtn').textContent = more.hidden ? 'Więcej filtrów ▾' : 'Mniej filtrów ▴';
+  });
 
   searchEl.addEventListener('input', render);
 
@@ -242,7 +316,7 @@ function initUi(map, layers, entries) {
     );
   });
 
-  render();
+  applyFilters();
 }
 
 function initMap(data) {
