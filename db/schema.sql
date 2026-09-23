@@ -79,6 +79,29 @@ stable
 security definer
 set search_path = ''
 as $$
+  -- Zapis wymaga sesji po drugim składniku (MFA TOTP, poziom aal2) — patrz panel operatora.
+  select coalesce((select auth.jwt() ->> 'aal'), 'aal1') = 'aal2'
+    and exists (
+      select 1
+      from public.operators o
+      join auth.users u on lower(u.email) = lower(o.email)
+      where u.id = auth.uid()
+        and u.email_confirmed_at is not null
+        and u.deleted_at is null
+        and (u.banned_until is null or u.banned_until < now())
+    );
+$$;
+revoke execute on function public.is_operator() from public, anon;
+grant  execute on function public.is_operator() to authenticated;
+
+-- Diagnostyka dla panelu: konto na allow-liście niezależnie od MFA.
+create or replace function public.is_operator_konto()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
   select exists (
     select 1
     from public.operators o
@@ -89,8 +112,8 @@ as $$
       and (u.banned_until is null or u.banned_until < now())
   );
 $$;
-revoke execute on function public.is_operator() from public, anon;
-grant  execute on function public.is_operator() to authenticated;
+revoke execute on function public.is_operator_konto() from public, anon;
+grant  execute on function public.is_operator_konto() to authenticated;
 
 -- Row Level Security: publiczny odczyt, zapis tylko dla operatorów z allow-listy.
 alter table public.zbiorniki enable row level security;

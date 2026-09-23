@@ -1,9 +1,12 @@
-/* Funkcja Supabase: przyjmuje zgłoszenie błędu z formularza na mapie, ogranicza liczbę
- * zgłoszeń z jednego adresu, zakłada issue w repozytorium i zapisuje wpis w tabeli zgloszenia.
+/* Funkcja Supabase: przyjmuje zgłoszenie błędu z formularza na mapie, atomowo rezerwuje limit
+ * w bazie (funkcja SQL zgloszenie_rezerwuj), zakłada issue w repozytorium i uzupełnia wpis.
+ * Logika obsługi jest w obsluga.js (testowana w Node); tu tylko HTTP, CORS i zależności.
  * Sekrety: GITHUB_TOKEN (fine-grained, Issues: read/write), GITHUB_REPO (owner/repo),
- * MAP_URL (publiczny adres mapy), opcjonalnie ALLOWED_ORIGINS (lista adresów po przecinku). */
-import { createClient } from 'npm:@supabase/supabase-js@2';
-import { validateReport, issueContent, LIMITY } from './zgloszenie.js';
+ * MAP_URL (publiczny adres mapy), opcjonalnie ALLOWED_ORIGINS (lista adresów po przecinku),
+ * ZGLOSZENIA_WSTRZYMANE=1 — wyłącznik awaryjny. */
+import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
+import { LIMITY } from './zgloszenie.js';
+import { obsluzZgloszenie } from './obsluga.js';
 
 const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
   .split(',')
@@ -24,7 +27,7 @@ function corsHeaders(req: Request) {
 const json = (req: Request, status: number, body: unknown) =>
   new Response(JSON.stringify(body), { status, headers: corsHeaders(req) });
 
-async function createIssue(title: string, body: string) {
+async function utworzIssue(title: string, body: string) {
   const res = await fetch(`https://api.github.com/repos/${Deno.env.get('GITHUB_REPO')}/issues`, {
     method: 'POST',
     headers: {
@@ -35,6 +38,7 @@ async function createIssue(title: string, body: string) {
       'User-Agent': 'mapa-wod-pzw-rzeszow',
     },
     body: JSON.stringify({ title, body, labels: ['zgłoszenie'] }),
+    signal: AbortSignal.timeout(15_000),
   });
   if (!res.ok) throw new Error(`GitHub ${res.status}: ${await res.text()}`);
   const issue = await res.json();
@@ -47,73 +51,48 @@ Deno.serve(async (req) => {
   // Wyłącznik awaryjny: sekret ZGLOSZENIA_WSTRZYMANE=1 zatrzymuje przyjmowanie zgłoszeń bez zmiany kodu.
   if (Deno.env.get('ZGLOSZENIA_WSTRZYMANE') === '1') return json(req, 503, { ok: false, error: 'wstrzymane' });
 
+  // Rozmiar treści sprawdzany przed parsowaniem: nagłówek, a potem faktyczna długość.
+  const zadeklarowane = Number(req.headers.get('content-length') || 0);
+  if (zadeklarowane > LIMITY.bodyBajty) return json(req, 413, { ok: false, error: 'rozmiar' });
   let input: unknown;
   try {
-    input = await req.json();
+    const surowe = await req.text();
+    if (new TextEncoder().encode(surowe).length > LIMITY.bodyBajty) return json(req, 413, { ok: false, error: 'rozmiar' });
+    input = JSON.parse(surowe);
   } catch {
     return json(req, 400, { ok: false, error: 'json' });
   }
-  const wynik = validateReport(input);
-  if (!wynik.ok) return json(req, 400, { ok: false, error: wynik.error });
-  const { report } = wynik;
 
   // Ostatni wpis x-forwarded-for pochodzi od bramy Supabase; wcześniejsze może dopisać klient.
   const ip = (req.headers.get('x-forwarded-for') || 'nieznany').split(',').pop()!.trim() || 'nieznany';
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-  const odKiedy = new Date(Date.now() - 3600 * 1000).toISOString();
-  const { count, error: countError } = await db
-    .from('zgloszenia')
-    .select('id', { count: 'exact', head: true })
-    .eq('ip', ip)
-    .gte('created_at', odKiedy);
-  if (countError) return json(req, 500, { ok: false, error: 'baza' });
-  if ((count ?? 0) >= LIMITY.naGodzine) return json(req, 429, { ok: false, error: 'limit' });
-  const { count: lacznie } = await db
-    .from('zgloszenia')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', odKiedy);
-  if ((lacznie ?? 0) >= LIMITY.lacznieNaGodzine) return json(req, 429, { ok: false, error: 'limit' });
-  const odDoby = new Date(Date.now() - 86400 * 1000).toISOString();
-  const { count: naDobe } = await db
-    .from('zgloszenia')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', odDoby);
-  if ((naDobe ?? 0) >= LIMITY.lacznieNaDobe) return json(req, 429, { ok: false, error: 'limit' });
-  // Powtórka: to samo łowisko z tego samego adresu albo identyczny opis w ciągu doby — bez nowego issue.
-  const { data: ostatnie } = await db
-    .from('zgloszenia')
-    .select('ip, nazwa, opis')
-    .gte('created_at', odDoby)
-    .limit(LIMITY.lacznieNaDobe);
-  const powtorka = (ostatnie ?? []).some(
-    (z) => (z.ip === ip && z.nazwa === report.nazwa) || z.opis === report.opis
-  );
-  if (powtorka) return json(req, 409, { ok: false, error: 'powtorka' });
 
-  const { title, body } = issueContent(report, Deno.env.get('MAP_URL') || '');
-  let issue;
-  try {
-    issue = await createIssue(title, body);
-  } catch (err) {
-    console.error(err);
-    return json(req, 502, { ok: false, error: 'github' });
-  }
-
-  const { error: insertError } = await db.from('zgloszenia').insert({
+  const wynik = await obsluzZgloszenie({
+    input,
     ip,
-    typ: report.typ,
-    nazwa: report.nazwa,
-    lat: report.lat,
-    lon: report.lon,
-    opis: report.opis,
-    kontakt: report.kontakt || null,
-    issue_numer: issue.numer,
-    issue_url: issue.url,
+    mapUrl: Deno.env.get('MAP_URL') || '',
+    rezerwuj: async (r) => {
+      const { data, error } = await db.rpc('zgloszenie_rezerwuj', {
+        p_ip: r.ip,
+        p_typ: r.typ,
+        p_nazwa: r.nazwa,
+        p_lat: r.lat,
+        p_lon: r.lon,
+        p_opis: r.opis,
+        p_kontakt: r.kontakt || null,
+        p_na_godzine: LIMITY.naGodzine,
+        p_lacznie_na_godzine: LIMITY.lacznieNaGodzine,
+        p_lacznie_na_dobe: LIMITY.lacznieNaDobe,
+      });
+      if (error) throw new Error(`rezerwacja: ${error.message}`);
+      return data;
+    },
+    utworzIssue,
+    oznacz: async (id, zmiany) => {
+      const { error } = await db.from('zgloszenia').update(zmiany).eq('id', id);
+      if (error) throw new Error(`oznacz: ${error.message}`);
+    },
+    log: (m) => console.error(m),
   });
-  if (insertError) console.error(insertError);
-  // Adres IP jest daną osobową: wpisy starsze niż okres retencji są usuwane przy każdym zgłoszeniu.
-  const retencja = new Date(Date.now() - LIMITY.retencjaDni * 86400 * 1000).toISOString();
-  await db.from('zgloszenia').delete().lt('created_at', retencja);
-
-  return json(req, 200, { ok: true, numer: issue.numer, url: issue.url });
+  return json(req, wynik.status, wynik.body);
 });

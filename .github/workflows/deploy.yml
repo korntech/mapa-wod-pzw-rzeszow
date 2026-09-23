@@ -2,6 +2,10 @@
 # nocnego snapshotu (commit wykonany tokenem GITHUB_TOKEN nie wyzwala zdarzenia push,
 # więc bez wyzwalacza workflow_run snapshot na stronie nigdy by się nie odświeżył).
 # Wymaga ustawienia w repozytorium: Settings → Pages → Source: "GitHub Actions".
+#
+# Publikowany jest DOKŁADNIE ten commit, który przeszedł kontrolę w tym samym przebiegu
+# (job `check` → `build` → `deploy`), a nie „aktualny main”. Nieudane testy lub walidacja
+# danych blokują publikację. Uprawnienia pages/id-token ma tylko job wdrożenia.
 
 name: Publikacja na GitHub Pages
 
@@ -16,22 +20,44 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: true
 
+env:
+  # Dla workflow_run zdarzenie niesie SHA commitu snapshotu; dla push/dispatch — github.sha.
+  PUBLIKOWANY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
-  build:
+  check:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ env.PUBLIKOWANY_SHA }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Składnia, walidacja snapshotu i testy
+        run: npm run check
+
+  build:
+    needs: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.PUBLIKOWANY_SHA }}
           persist-credentials: false
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -47,6 +73,10 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

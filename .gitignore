@@ -7,9 +7,22 @@ _prywatne/
 Claude outputs/
 claude-outputs/
 
+# Sekrety i klucze — nigdy w repozytorium (bezpieczny wzorzec: .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
 # Ustawienia narzędzi lokalnych
 .claude/
 .DS_Store
+
+# Wyniki narzędzi (tools/bdot, tools/qa) i katalogi robocze
+tools/bdot/work/
+tools/qa/run/
+*.log
 
 # Pliki robocze CLI Supabase
 supabase/.temp/

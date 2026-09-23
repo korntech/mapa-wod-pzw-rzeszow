@@ -69,7 +69,7 @@ if (!sb) {
   initMap();
   loadCandidates();
   sb.auth.getSession().then(({ data }) => {
-    if (data.session) onLogin(data.session);
+    if (data.session) bramkaMfa(data.session);
   });
 }
 
@@ -112,7 +112,89 @@ $('loginform').addEventListener('submit', async (ev) => {
     $('loginmsg').textContent = 'Błąd logowania: ' + tlumaczBlad(error.message);
     return;
   }
+  bramkaMfa(data.session);
+});
+
+// --- DRUGI SKŁADNIK (MFA, TOTP) ---
+// Reguły RLS wymagają sesji na poziomie aal2, więc samo hasło nie pozwala zapisywać.
+// Operator z allow-listy bez skonfigurowanego składnika jest prowadzony przez rejestrację
+// aplikacji uwierzytelniającej; przy kolejnych logowaniach podaje 6-cyfrowy kod.
+let mfaFactorId = null;
+function mfaPokaz(tytul, info, enroll) {
+  $('loginform').style.display = 'none';
+  $('loginmsg').textContent = '';
+  $('mfabox').style.display = '';
+  $('mfaenroll').style.display = enroll ? '' : 'none';
+  $('mfatitle').textContent = tytul;
+  $('mfainfo').textContent = info;
+  $('mfamsg').className = 'msg';
+  $('mfamsg').textContent = '';
+  $('mfacode').value = '';
+  $('mfacode').focus();
+}
+async function bramkaMfa(session) {
+  const { data: aal, error } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) {
+    toast('Nie udało się sprawdzić poziomu logowania: ' + tlumaczBlad(error.message));
+    return;
+  }
+  if (aal.currentLevel === 'aal2') return onLogin(session);
+  const { data: factors } = await sb.auth.mfa.listFactors();
+  const zweryfikowany = (factors?.totp || []).find((f) => f.status === 'verified');
+  if (zweryfikowany) {
+    mfaFactorId = zweryfikowany.id;
+    mfaPokaz('Kod z aplikacji', 'Wpisz kod z aplikacji uwierzytelniającej, aby odblokować zapis.', false);
+    return;
+  }
+  // Konto spoza allow-listy nie musi konfigurować MFA — i tak nie zapisze; wpuść w trybie podglądu.
+  const { data: konto } = await sb.rpc('is_operator_konto');
+  if (konto !== true) return onLogin(session);
+  // Porzucone, niezweryfikowane rejestracje usuń, żeby nie mnożyć składników.
+  for (const f of (factors?.totp || []).filter((x) => x.status !== 'verified'))
+    await sb.auth.mfa.unenroll({ factorId: f.id });
+  const { data: enroll, error: eErr } = await sb.auth.mfa.enroll({
+    factorType: 'totp',
+    friendlyName: 'Panel operatora',
+  });
+  if (eErr) {
+    toast('Nie udało się rozpocząć konfiguracji MFA: ' + tlumaczBlad(eErr.message));
+    return onLogin(session);
+  }
+  mfaFactorId = enroll.id;
+  $('mfaqr').src = enroll.totp.qr_code;
+  $('mfasecret').textContent = enroll.totp.secret;
+  mfaPokaz(
+    'Skonfiguruj drugi składnik',
+    'Zeskanuj kod aplikacją uwierzytelniającą (np. Google Authenticator, Microsoft Authenticator, 1Password) i wpisz wygenerowany kod. Od teraz będzie wymagany przy każdym logowaniu.',
+    true
+  );
+}
+$('mfaform').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  $('mfabtn').disabled = true;
+  $('mfamsg').className = 'msg';
+  $('mfamsg').textContent = 'Sprawdzanie…';
+  const code = $('mfacode').value.replace(/\s+/g, '');
+  const { data: ch, error: chErr } = await sb.auth.mfa.challenge({ factorId: mfaFactorId });
+  const { error } = chErr
+    ? { error: chErr }
+    : await sb.auth.mfa.verify({ factorId: mfaFactorId, challengeId: ch.id, code });
+  $('mfabtn').disabled = false;
+  if (error) {
+    $('mfamsg').className = 'msg err';
+    $('mfamsg').textContent = 'Nieprawidłowy kod: ' + tlumaczBlad(error.message);
+    $('mfacode').select();
+    return;
+  }
+  const { data } = await sb.auth.getSession();
+  $('mfabox').style.display = 'none';
+  $('loginform').style.display = '';
   onLogin(data.session);
+});
+$('mfacancel').addEventListener('click', (ev) => {
+  ev.preventDefault();
+  signOut();
+  location.replace('admin.html');
 });
 function tlumaczBlad(m) {
   const T = {
@@ -120,6 +202,8 @@ function tlumaczBlad(m) {
     'Email not confirmed': 'adres e-mail nie został potwierdzony',
     'Too many requests': 'zbyt wiele prób — odczekaj chwilę',
     'Failed to fetch': 'brak połączenia z bazą',
+    'Invalid TOTP code': 'kod nie pasuje — sprawdź godzinę w telefonie i spróbuj ponownie',
+    MFA: 'błąd weryfikacji drugiego składnika',
   };
   for (const k in T) if ((m || '').includes(k)) return T[k];
   return m;
@@ -135,7 +219,13 @@ function onLogin(session) {
 /** Konto spoza allow-listy może się zalogować, ale reguły RLS odrzucą każdy zapis — uprzedź o tym. */
 async function checkOperator() {
   const { data, error } = await sb.rpc('is_operator');
-  if (!error && data === false) toast('To konto nie ma uprawnień do zapisu (brak na liście operatorów)');
+  if (error || data !== false) return;
+  const { data: konto } = await sb.rpc('is_operator_konto');
+  toast(
+    konto === true
+      ? 'Zapis wymaga drugiego składnika logowania — wyloguj się i zaloguj ponownie z kodem z aplikacji'
+      : 'To konto nie ma uprawnień do zapisu (brak na liście operatorów)'
+  );
 }
 $('logout').addEventListener('click', () => {
   signOut();

@@ -182,6 +182,21 @@ body:not(.logged) #tabs, body:not(.logged) #logout, body:not(.logged) #email{vis
    <button class="btn primary" type="submit" id="loginbtn">Zaloguj</button>
   </form>
   <div class="msg" id="loginmsg"></div>
+  <div id="mfabox" style="display:none">
+   <h2 id="mfatitle">Drugi składnik logowania</h2>
+   <p id="mfainfo"></p>
+   <div id="mfaenroll" style="display:none">
+    <img id="mfaqr" alt="Kod QR do aplikacji uwierzytelniającej" style="display:block;width:180px;height:180px;margin:0 auto 8px;border:1px solid #ddd;border-radius:8px">
+    <p style="font-size:12px">Nie możesz zeskanować? Wpisz klucz ręcznie: <code id="mfasecret" style="user-select:all;word-break:break-all"></code></p>
+   </div>
+   <form id="mfaform">
+    <label>Kod z aplikacji (6 cyfr)</label>
+    <input type="text" id="mfacode" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="one-time-code" required>
+    <button class="btn primary" type="submit" id="mfabtn">Potwierdź</button>
+   </form>
+   <div class="msg" id="mfamsg"></div>
+   <a class="back" href="#" id="mfacancel">← Anuluj i wyloguj</a>
+  </div>
   <a class="back" href="index.html">← Wróć do mapy publicznej</a>
   <a class="back" data-link="instrukcja" href="#" target="_blank" rel="noopener noreferrer">📖 Instrukcja operatora</a>
  </div>

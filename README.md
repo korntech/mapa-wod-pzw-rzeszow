@@ -106,17 +106,21 @@ Pierwsze uruchomienie:
 2. W **SQL Editor** uruchom [`db/schema.sql`](db/schema.sql) (tabele, allow-lista `operators`, RLS, uprawnienia).
 3. Zasil bazę danymi ze snapshotu: `npm run seed-sql > seed.sql`, wynik uruchom w SQL Editor.
 4. W **Authentication** wyłącz publiczną rejestrację; konta operatorów (e-mail + hasło) zakładaj w **Authentication → Users**.
+   W **Authentication → Multi-Factor** upewnij się, że **TOTP** jest włączone (domyślnie jest).
 5. Każdego operatora dopisz do allow-listy — samo konto nie wystarcza:
    ```sql
    insert into public.operators (email) values ('operator@przyklad.pl');
    ```
+6. Operator przy pierwszym logowaniu konfiguruje w panelu **drugi składnik** (aplikacja uwierzytelniająca,
+   TOTP). Reguły RLS wymagają sesji na poziomie `aal2` — samo hasło pozwala oglądać, ale nie zapisywać.
+   Utrata telefonu: w **Authentication → Users → konto → Factors** usuń składnik, operator skonfiguruje nowy.
 
 Pliki `db/migrate-*.sql` to jednorazowe zmiany dla **istniejącej** bazy (na świeżej bazie wystarczy
 `schema.sql` + seed). Uruchamia się je raz, w kolejności dat, w SQL Editor; po uruchomieniu na bazie
 produkcyjnej plik migracji usuwa się z repozytorium (historia zostaje w git).
 
 Zabezpieczenia w bazie (`db/schema.sql`): publiczny odczyt przez RLS, zapis wyłącznie dla potwierdzonych
-kont z allow-listy `operators`, ograniczenia CHECK na długości pól, współrzędne i kształt geometrii oraz
+kont z allow-listy `operators` po drugim składniku (MFA), ograniczenia CHECK na długości pól, współrzędne i kształt geometrii oraz
 tabela `historia_zmian` (kto, kiedy, stan przed i po), niedostępna z API — do odtwarzania danych po pomyłce.
 
 Panel: `…/admin.html`. Obsługę panelu opisuje [instrukcja operatora](docs/instrukcja-operatora.md).
@@ -126,10 +130,15 @@ Zmiany zapisane w panelu są widoczne na mapie po odświeżeniu strony.
 
 „Zgłoś błąd” w popupie łowiska i w oknie „O mapie” otwiera formularz (zbiornik lub rzeka, opis,
 opcjonalny kontakt). Stronę obsługuje funkcja Supabase [`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts):
-sprawdza treść, ogranicza liczbę zgłoszeń z jednego adresu IP, zakłada issue z etykietą `zgłoszenie`
-i zapisuje wpis w tabeli `zgloszenia`. Gdy funkcja nie odpowiada, formularz pokazuje zapasowy link
-do issue na GitHubie z gotową treścią. Walidacja i treść issue są w module
-[`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js) współdzielonym ze stroną (testy: `npm test`).
+sprawdza treść (ścisły schemat pól), **atomowo rezerwuje limit** w bazie (funkcja SQL
+`zgloszenie_rezerwuj` pod blokadą — wpis w tabeli `zgloszenia` powstaje przed issue), a dopiero potem
+zakłada issue z etykietą `zgłoszenie` i uzupełnia wpis numerem issue. Żądanie, które nie zwiększyło
+licznika, nigdy nie tworzy issue; nieudane założenie issue zostawia wpis ze statusem `blad`. Gdy funkcja
+nie odpowiada, formularz pokazuje zapasowy link do issue na GitHubie z gotową treścią. Walidacja i treść
+issue są w module [`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js) współdzielonym ze stroną,
+logika obsługi w [`obsluga.js`](supabase/functions/zglos-blad/obsluga.js) (testy: `npm test`).
+Opis zgłaszającego trafia do issue jako blok kodu (bez Markdown, linków i wzmianek); **kontakt nie jest
+publikowany** — zostaje w tabeli `zgloszenia`, dostępnej operatorom w panelu Supabase.
 
 Wdrożenie funkcji (raz): token GitHub *fine-grained* ograniczony do tego repozytorium
 z uprawnieniem **Issues: Read and write**, sekrety i deploy przez CLI Supabase:
@@ -148,7 +157,9 @@ w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sek
 
 Ochrona przed nadużyciami (limity w `zgloszenie.js` → `LIMITY`): 5 zgłoszeń na godzinę z jednego adresu IP,
 20 na godzinę i 60 na dobę łącznie, odrzucanie powtórek (to samo łowisko z tego samego adresu albo identyczny
-opis w ciągu doby), pole-pułapka dla botów, adresy IP kasowane po 30 dniach. Wyłącznik awaryjny: sekret
+opis w ciągu doby), pole-pułapka dla botów, limit rozmiaru żądania 16 KB. Adresy IP i kontakty są kasowane
+po 30 dniach zadaniem `pg_cron` (`zgloszenia-retencja`, codziennie 03:15 UTC; przebiegi i błędy:
+`select * from cron.job_run_details order by start_time desc`). Wyłącznik awaryjny: sekret
 `ZGLOSZENIA_WSTRZYMANE=1` w funkcji (`npx supabase secrets set …`) zatrzymuje przyjmowanie zgłoszeń bez zmiany
 kodu. Klasyfikacja AI ma osobny budżet dobowy (`tools/triage/config.json` → `budzetDobowy`); powyżej niego
 zgłoszenia zostają bez oceny modelu, ale nadal trafiają do Issues.
@@ -168,7 +179,10 @@ Ponowna klasyfikacja: Actions → „Triage zgłoszeń” → Run workflow → n
 
 ## Automatyzacje (GitHub Actions)
 
-Żaden workflow nie wymaga sekretów — odczyt bazy używa klucza publicznego z `config.json`.
+Poza triage żaden workflow nie wymaga sekretów — odczyt bazy używa klucza publicznego z `config.json`;
+`triage.yml` używa sekretu `COPILOT_PAT` tylko w kroku klasyfikacji. Akcje są przypięte do SHA, a globalny
+Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie ten commit, który przeszedł
+`npm run check` w tym samym przebiegu — nieudane testy blokują wdrożenie.
 
 | Workflow | Kiedy | Co robi |
 |---|---|---|

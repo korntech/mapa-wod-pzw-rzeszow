@@ -125,14 +125,14 @@ header small{opacity:.75}
 <div>
 <h2>Zgłoś błąd w danych <button type="button" class="close" data-close aria-label="Zamknij">×</button></h2>
 <form id="reportform" class="modal-form" novalidate>
-<p class="hint">Zgłoszenie trafi jako publiczne issue do repozytorium projektu. Nie podawaj danych, których nie chcesz upubliczniać. Adres IP nadawcy jest przechowywany przez 30 dni wyłącznie w celu ograniczenia nadużyć.</p>
+<p class="hint">Opis zgłoszenia trafi jako publiczne issue do repozytorium projektu — nie wpisuj w nim danych, których nie chcesz upubliczniać. Kontakt nie jest publikowany. Adres IP nadawcy i kontakt są przechowywane w bazie Okręgu przez 30 dni (ograniczenie nadużyć i odpowiedź na zgłoszenie), po czym są usuwane automatycznie.</p>
 <label>Woda
 <select name="woda" required><option value="">— wybierz zbiornik lub rzekę —</option></select>
 </label>
 <label>Co jest nie tak? <span class="hint">(10–2000 znaków)</span>
 <textarea name="opis" required minlength="10" maxlength="2000" placeholder="Np. zbiornik jest zaznaczony w złym miejscu, zasady są nieaktualne, brakuje odcinka rzeki…"></textarea>
 </label>
-<label>Kontakt <span class="hint">(opcjonalnie — e-mail lub telefon, będzie widoczny publicznie)</span>
+<label>Kontakt <span class="hint">(opcjonalnie — e-mail lub telefon; widoczny tylko dla operatorów Okręgu, nie w publicznym issue)</span>
 <input name="kontakt" maxlength="200" autocomplete="off">
 </label>
 <label class="hp" aria-hidden="true">Strona www<input name="www" tabindex="-1" autocomplete="off"></label>
@@ -140,7 +140,7 @@ header small{opacity:.75}
 </form>
 <div id="rep-done">
 <p><b>Dziękujemy!</b> Zgłoszenie nr <span data-numer></span> zostało przyjęte i trafiło do osób opiekujących się mapą.</p>
-<p class="hint" style="margin-top:8px">Zgłoszenie jest publiczne — możesz je obejrzeć i dopisać komentarz na stronie projektu: <a href="#" target="_blank" rel="noopener noreferrer"></a>. Jeśli podałeś(-aś) kontakt, odpowiedź przyjdzie tą drogą.</p>
+<p class="hint" style="margin-top:8px">Zgłoszenie jest publiczne — możesz je obejrzeć i dopisać komentarz na stronie projektu: <a href="#" target="_blank" rel="noopener noreferrer"></a>. Jeśli podałeś(-aś) kontakt, operator może odpowiedzieć tą drogą.</p>
 <div class="actions"><button type="button" data-close>Zamknij</button></div>
 </div>
 </div></div>

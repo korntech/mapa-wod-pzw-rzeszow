@@ -10,21 +10,28 @@ export const LIMITY = {
   lacznieNaGodzine: 20,
   lacznieNaDobe: 60,
   retencjaDni: 30,
+  /** Maksymalny rozmiar treści żądania (bajty) — sprawdzany przed parsowaniem JSON. */
+  bodyBajty: 16 * 1024,
 };
 
 export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka' };
+
+/** Jedyne dozwolone pola wejścia; każde inne oznacza odrzucenie (ścisły schemat). */
+const POLA = new Set(['typ', 'nazwa', 'lat', 'lon', 'opis', 'kontakt', 'www']);
 
 const tekst = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 
 /** Sprawdza dane z formularza; zwraca { ok, report } albo { ok: false, error } z nazwą pola. */
 export function validateReport(input) {
-  if (!input || typeof input !== 'object') return { ok: false, error: 'typ' };
-  if (!(input.typ in TYPY)) return { ok: false, error: 'typ' };
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return { ok: false, error: 'typ' };
+  // Tylko własne pola obiektu: „constructor” czy „__proto__” nie są typem wody.
+  for (const key of Object.keys(input)) if (!POLA.has(key)) return { ok: false, error: 'schemat' };
+  if (typeof input.typ !== 'string' || !Object.hasOwn(TYPY, input.typ)) return { ok: false, error: 'typ' };
   if (tekst(input.www, 1)) return { ok: false, error: 'spam' };
   const nazwa = tekst(input.nazwa, LIMITY.nazwaMax);
   if (!nazwa) return { ok: false, error: 'nazwa' };
-  const lat = Number(input.lat);
-  const lon = Number(input.lon);
+  const lat = typeof input.lat === 'number' || typeof input.lat === 'string' ? Number(input.lat) : NaN;
+  const lon = typeof input.lon === 'number' || typeof input.lon === 'string' ? Number(input.lon) : NaN;
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
     return { ok: false, error: 'wspolrzedne' };
   }
@@ -35,28 +42,33 @@ export function validateReport(input) {
   return { ok: true, report: { typ: input.typ, nazwa, lat: round(lat), lon: round(lon), opis, kontakt } };
 }
 
-/* Tekst użytkownika trafia do bloku cytatu z wyłączonym HTML, więc nie zmienia struktury issue. */
-const cytat = (s) =>
-  s
-    .replace(/</g, '&lt;')
-    .split('\n')
-    .map((line) => '> ' + line.replace(/^(\s*)([#>*+-]|\d+\.)(\s)/, '$1\\$2$3'))
-    .join('\n');
+/* Tekst użytkownika trafia do ogrodzonego bloku kodu: GitHub nie interpretuje w nim Markdown,
+ * HTML, linków ani wzmianek @użytkownik (brak powiadomień). Ogrodzenie jest dłuższe niż
+ * najdłuższy ciąg odwrotnych apostrofów w tekście, więc treść nie może go zamknąć. */
+export function blokKodu(s) {
+  const runs = s.match(/`+/g) || [];
+  const dlugosc = Math.max(3, ...runs.map((r) => r.length + 1));
+  const plot = '`'.repeat(dlugosc);
+  return `${plot}text\n${s.replace(/\r/g, '')}\n${plot}`;
+}
 
-/** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy. */
-export function issueContent(report, mapUrl) {
+/** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy, id — numer wpisu w bazie.
+ *  Kontakt nie jest publikowany: zostaje w bazie Okręgu (retencja jak dla adresu IP). */
+export function issueContent(report, mapUrl, id) {
   const lines = [
-    `**Woda:** ${report.nazwa} (${TYPY[report.typ]})`,
+    `**Woda:** ${report.nazwa.replace(/[`*_~[\]<>]/g, '')} (${TYPY[report.typ]})`,
     `**Współrzędne:** ${report.lat}, ${report.lon}`,
   ];
-  if (report.kontakt) lines.push(`**Kontakt:** ${cytat(report.kontakt).slice(2)}`);
+  if (report.kontakt) {
+    lines.push(`**Kontakt:** podany — dostępny operatorom w bazie${id ? ` (wpis nr ${id})` : ''}`);
+  }
   lines.push(
     '',
     '**Opis zgłoszenia:**',
     '',
-    cytat(report.opis),
+    blokKodu(report.opis),
     '',
     `_Zgłoszono z formularza na mapie: ${mapUrl}_`
   );
-  return { title: `Zgłoszenie: ${report.nazwa}`, body: lines.join('\n') };
+  return { title: `Zgłoszenie: ${report.nazwa.replace(/[`*_~[\]<>#@]/g, '')}`, body: lines.join('\n') };
 }

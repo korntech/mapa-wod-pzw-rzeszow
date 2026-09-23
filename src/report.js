@@ -24,6 +24,8 @@ const KOMUNIKATY = {
   wspolrzedne: 'Wybierz zbiornik lub rzekę z listy.',
   opis: `Opis musi mieć od ${LIMITY.opisMin} do ${LIMITY.opisMax} znaków.`,
   spam: 'Zgłoszenie zostało odrzucone.',
+  schemat: 'Zgłoszenie zostało odrzucone.',
+  rozmiar: 'Zgłoszenie jest za duże.',
   limit: 'Za dużo zgłoszeń z tego adresu w ciągu godziny. Spróbuj później.',
   powtorka: 'Takie zgłoszenie już dziś wpłynęło — dziękujemy, jest w kolejce do sprawdzenia.',
   wstrzymane: 'Przyjmowanie zgłoszeń jest chwilowo wstrzymane.',

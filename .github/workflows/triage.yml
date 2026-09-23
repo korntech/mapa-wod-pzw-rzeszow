@@ -54,17 +54,21 @@ jobs:
           LIMIT=$(jq -r .budzetDobowy tools/triage/config.json)
           ETYKIETA=$(jq -r .etykietaZgloszenia tools/triage/config.json)
           SINCE=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          # Liczone są wykonane wywołania modelu (issue, które dostały etykietę „pewność: …”
+          # w ostatniej dobie), a nie sama liczba nowych zgłoszeń.
           N=$(gh issue list --repo "$GITHUB_REPOSITORY" --label "$ETYKIETA" --state all \
-                --search "created:>=$SINCE" --limit 500 --json number --jq 'length')
-          echo "Zgłoszeń w ostatniej dobie: $N (budżet klasyfikacji: $LIMIT)"
+                --search "updated:>=$SINCE label:\"pewność: wysoka\",\"pewność: średnia\",\"pewność: niska\"" \
+                --limit 500 --json number --jq 'length')
+          echo "Klasyfikacji modelu w ostatniej dobie: $N (budżet: $LIMIT)"
           if [ "$N" -gt "$LIMIT" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::warning::Budżet dobowy klasyfikacji wyczerpany — issue #$ISSUE pozostaje bez oceny modelu."
           fi
 
+      # Wersja przypięta (podbijana świadomie, jak akcje): globalny CLI nie jest objęty lockfile ani npm audit.
       - name: Zainstaluj Copilot CLI
         if: steps.budzet.outputs.skip != 'true'
-        run: npm install -g @github/copilot
+        run: npm install -g @github/copilot@1.0.88
 
       - name: Klasyfikacja
         if: steps.budzet.outputs.skip != 'true'

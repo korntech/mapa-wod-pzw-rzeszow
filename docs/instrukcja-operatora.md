@@ -9,8 +9,16 @@ Adres panelu: `…/admin.html` (na mapie publicznej link „🔑 Operator” w p
 ## 1. Logowanie
 
 1. Otwórz panel i wpisz e-mail oraz hasło swojego konta operatora.
-2. Po zalogowaniu zobaczysz listę po lewej, mapę pośrodku i swój e-mail w nagłówku.
-3. Po pracy kliknij **Wyloguj** — zwłaszcza na wspólnym komputerze; przeglądarka pamięta sesję.
+2. **Drugi składnik.** Przy pierwszym logowaniu panel pokaże kod QR: zeskanuj go aplikacją
+   uwierzytelniającą w telefonie (Google Authenticator, Microsoft Authenticator, 1Password lub
+   podobna) i wpisz 6-cyfrowy kod, który aplikacja wyświetli. Od tej pory przy każdym logowaniu
+   po haśle wpisujesz aktualny kod z aplikacji. Bez niego panel pozwala tylko oglądać — zapis
+   jest zablokowany.
+3. Po zalogowaniu zobaczysz listę po lewej, mapę pośrodku i swój e-mail w nagłówku.
+4. Po pracy kliknij **Wyloguj** — zwłaszcza na wspólnym komputerze; przeglądarka pamięta sesję.
+
+Zgubiony lub nowy telefon: poproś osobę techniczną o usunięcie starego składnika w bazie —
+przy następnym logowaniu panel pokaże nowy kod QR.
 
 Konta zakłada osoba techniczna opiekująca się bazą. Nie ma przycisku „nie pamiętam hasła” — nowe hasło
 ustawia ta sama osoba.
@@ -22,6 +30,8 @@ Komunikaty przy logowaniu:
 | nieprawidłowy e-mail lub hasło | sprawdź dane; jeśli nadal nie działa, poproś o zmianę hasła |
 | zbyt wiele prób — odczekaj chwilę | odczekaj kilka minut |
 | brak połączenia z bazą | baza nie odpowiada (patrz punkt 8) |
+| kod nie pasuje | sprawdź, czy telefon ma automatycznie ustawianą godzinę, i wpisz świeży kod |
+| „Zapis wymaga drugiego składnika logowania” | wyloguj się i zaloguj ponownie, wpisując kod z aplikacji |
 
 ## 2. Jak wygląda panel
 
