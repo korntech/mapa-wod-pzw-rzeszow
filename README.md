@@ -215,23 +215,25 @@ Bez sekretu `COPILOT_PAT` ręczne uruchomienie kończy się błędem w kroku kla
 
 ## Automatyzacje (GitHub Actions)
 
-Poza triage żaden workflow nie wymaga sekretów — odczyt bazy używa klucza publicznego z `config.json`;
-`triage.yml` używa sekretu `COPILOT_PAT` tylko w kroku klasyfikacji. Akcje są przypięte do SHA, a globalny
+Sekrety workflowów: `SNAPSHOT_DEPLOY_KEY` (klucz SSH do wypchnięcia snapshotu) i — tylko przy ręcznym
+triage — `COPILOT_PAT`. Odczyt bazy używa klucza publicznego z `config.json`; żaden workflow nie ma prawa
+zapisu tokenem Actions. Akcje są przypięte do SHA, a globalny
 Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie ten commit, który przeszedł
 `npm run check` w tym samym przebiegu — nieudane testy blokują wdrożenie.
 
 | Workflow | Kiedy | Co robi |
 |---|---|---|
 | `ci.yml` | push do `main`, pull request | składnia skryptów, walidacja snapshotu, testy, build; osobny job: wszystkie migracje na czystym Postgresie (dwa przebiegi) + seed |
-| `deploy.yml` | push do `main`, po udanym snapshocie, ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
-| `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie; utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
+| `deploy.yml` | push do `main` (także commit snapshotu), ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
+| `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie, wypychany kluczem wdrożeniowym (sekret `SNAPSHOT_DEPLOY_KEY`, klucz publiczny w Deploy keys z prawem zapisu; „Deploy keys” w liście obejść reguły `main`); utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
 | `healthcheck.yml` | co 6 h, ręcznie | sprawdza stronę i bazę; przy awarii zakłada issue z etykietą `awaria` i zamyka je, gdy kontrola przejdzie |
 | `triage.yml` | nowe issue `zgłoszenie`, ręcznie | klasyfikacja zgłoszenia przez model, etykiety i komentarz dla operatora |
 
 `dependabot.yml` co tydzień proponuje aktualizacje zależności npm i akcji.
 
-Gałąź `main` jest chroniona regułą (ruleset): zmiany trafiają przez pull request po zielonym CI, bez
-force-push i bez usuwania gałęzi. Scalenie do `main` uruchamia publikację strony i — przez integrację
+Gałąź `main` jest chroniona regułą (ruleset): zmiany trafiają przez pull request po zielonym CI
+(checki `check` i `migracje`), bez force-push i bez usuwania gałęzi; jedyne obejście to klucz wdrożeniowy
+snapshotu. Scalenie do `main` uruchamia publikację strony i — przez integrację
 Supabase — migracje bazy, dlatego CI jest ostatnią bramką przed produkcją.
 
 ## Jak pomóc

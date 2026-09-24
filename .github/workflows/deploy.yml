@@ -1,23 +1,15 @@
-# Publikacja builda (dist/) na GitHub Pages po każdym pushu do main oraz po zakończeniu
-# nocnego snapshotu (commit wykonany tokenem GITHUB_TOKEN nie wyzwala zdarzenia push,
-# więc bez wyzwalacza workflow_run snapshot na stronie nigdy by się nie odświeżył).
-# Wymaga ustawienia w repozytorium: Settings → Pages → Source: "GitHub Actions".
+# Publikacja builda (dist/) na GitHub Pages po każdym pushu do main — także po nocnym
+# snapshocie, bo snapshot-bot wypycha commit kluczem wdrożeniowym, co wyzwala zwykłe
+# zdarzenie `push`. Wymaga ustawienia w repozytorium: Settings → Pages → Source: "GitHub Actions".
 #
-# Publikowany jest DOKŁADNIE ten commit, który przeszedł kontrolę w tym samym przebiegu
-# (job `check` → `build` → `deploy`). Dla push/dispatch to github.sha; po nocnym snapshocie
-# to commit utworzony przez snapshot-bota, czyli czubek main w chwili startu (workflow_run.head_sha
-# wskazywałby commit, który uruchomił eksport — sprzed snapshotu). Job `check` ustala SHA raz
-# i przekazuje go dalej; nieudane testy lub walidacja danych blokują publikację.
-# Uprawnienia pages/id-token ma tylko job wdrożenia.
+# Publikowany jest DOKŁADNIE commit zdarzenia (github.sha), który przeszedł kontrolę w tym
+# samym przebiegu (job `check` → `build` → `deploy`); nieudane testy lub walidacja danych
+# blokują publikację. Uprawnienia pages/id-token ma tylko job wdrożenia.
 
 name: Publikacja na GitHub Pages
 
 on:
   push:
-    branches: [main]
-  workflow_run:
-    workflows: ['Snapshot danych z bazy']
-    types: [completed]
     branches: [main]
   workflow_dispatch: {}
 
@@ -30,7 +22,6 @@ concurrency:
 
 jobs:
   check:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     outputs:
@@ -38,8 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # Po snapshocie: czubek main (commit snapshot-bota); inaczej dokładnie commit zdarzenia.
-          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Ustal publikowany commit
         id: sha

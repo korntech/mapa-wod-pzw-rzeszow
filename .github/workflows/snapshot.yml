@@ -3,7 +3,16 @@
 # Eksport wstrzymuje się, gdy baza zwraca mniej danych niż obecny snapshot
 # (tools/snapshot/export.mjs), a walidacja odrzuca dane spoza limitów
 # (tools/snapshot/validate.mjs) — wtedy nic nie jest commitowane, a job kończy się błędem.
-# Po udanym przebiegu publikację strony uruchamia deploy.yml (wyzwalacz workflow_run).
+#
+# Commit jest wypychany kluczem wdrożeniowym (sekret SNAPSHOT_DEPLOY_KEY, klucz publiczny
+# w Settings → Deploy keys z prawem zapisu), a nie tokenem Actions:
+#  - gałąź main jest chroniona regułą; w liście obejść (bypass) jest „Deploy keys”,
+#    więc bot może zapisać snapshot, a nikt inny nie ominie reguły;
+#  - push kluczem wyzwala zdarzenie `push`, więc deploy.yml publikuje stronę zwykłą drogą
+#    (push tokenem GITHUB_TOKEN nie wyzwala innych workflowów);
+# PRZEJŚCIOWO: dopóki sekret SNAPSHOT_DEPLOY_KEY nie jest ustawiony, checkout wraca do tokenu
+# Actions, dlatego token ma jeszcze contents: write. Po dodaniu klucza i włączeniu reguły main
+# zmienić na contents: read (zadanie w notatkach projektu).
 
 name: Snapshot danych z bazy
 
@@ -25,6 +34,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ssh-key: ${{ secrets.SNAPSHOT_DEPLOY_KEY }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
