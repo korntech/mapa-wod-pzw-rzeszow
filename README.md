@@ -226,10 +226,19 @@ Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie te
 | `ci.yml` | push do `main`, pull request | składnia skryptów, walidacja snapshotu, testy, build; osobny job: wszystkie migracje na czystym Postgresie (dwa przebiegi) + seed |
 | `deploy.yml` | push do `main` (także commit snapshotu), ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
 | `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie, wypychany kluczem wdrożeniowym (sekret `SNAPSHOT_DEPLOY_KEY`, klucz publiczny w Deploy keys z prawem zapisu; „Deploy keys” w liście obejść reguły `main`); utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
-| `healthcheck.yml` | co 6 h, ręcznie | sprawdza stronę i bazę; przy awarii zakłada issue z etykietą `awaria` i zamyka je, gdy kontrola przejdzie |
+| `healthcheck.yml` | co 10 min, ręcznie | sprawdza stronę, snapshot, bazę i funkcję zgłoszeń (2 próby); **alarm** = issue `awaria` przypisane do opiekuna (e-mail/push z GitHuba) po 3 kolejnych nieudanych kontrolach (≈30 min), zamykane po przywróceniu z czasem trwania awarii; progi w `config.json` → `healthcheck` |
 | `triage.yml` | nowe issue `zgłoszenie`, ręcznie | klasyfikacja zgłoszenia przez model, etykiety i komentarz dla operatora |
 
 `dependabot.yml` co tydzień proponuje aktualizacje zależności npm i akcji.
+
+### Monitoring dostępności
+
+Healthcheck w Actions wykrywa awarię strony, snapshotu, bazy i funkcji zgłoszeń, ale nie awarię samego
+GitHuba (Pages i Actions padają razem). Jako niezależną drugą warstwę zaleca się zewnętrzny monitor
+(np. UptimeRobot w planie bezpłatnym: kontrola co 5 min, powiadomienie e-mail/aplikacja) ustawiony na
+adres mapy i na `…/data.json`. Opiekun otrzymuje powiadomienia GitHuba o przypisanych issue — w profilu
+GitHub (Settings → Notifications) warto mieć włączone „Assigned” dla e-maila i aplikacji mobilnej.
+Czas reakcji z oferty (3 dni robocze) liczy się od alarmu.
 
 Gałąź `main` jest chroniona regułą (ruleset): zmiany trafiają przez pull request po zielonym CI
 (checki `check` i `migracje`), bez force-push i bez usuwania gałęzi; jedyne obejście to klucz wdrożeniowy

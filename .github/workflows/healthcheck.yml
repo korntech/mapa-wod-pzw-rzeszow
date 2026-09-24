@@ -1,17 +1,30 @@
-# Kontrola dostępności strony i bazy co 6 godzin. Przy awarii zakłada issue
-# z etykietą „awaria” (albo dopisuje komentarz do otwartego); gdy kontrola
-# przechodzi, otwarte issue jest zamykane.
+# Kontrola dostępności: strona (GitHub Pages), snapshot danych, baza (Supabase REST)
+# i funkcja zgłoszeń — co 10 minut (config.json → healthcheck.coMinut; harmonogram GitHuba
+# bywa opóźniony o kilka minut). Kontrola kończy się błędem przy każdej awarii, a ALARM
+# (issue „awaria” przypisane do opiekuna → e-mail/push z GitHuba) powstaje dopiero po
+# `alarmPoNieudanych` kolejnych nieudanych przebiegach (domyślnie 3 ≈ 30 min), żeby chwilowe
+# czkawki nie budziły nikogo. Po przywróceniu usługi issue jest zamykane z czasem trwania awarii,
+# liczonym od pierwszej nieudanej kontroli — to jest zapis do raportu dostępności.
+#
+# Granica: kontrola działa w GitHub Actions; awaria samego GitHuba (Pages + Actions naraz)
+# nie zostanie zgłoszona przez ten mechanizm. Niezależny monitor zewnętrzny (np. UptimeRobot,
+# co 5 min, e-mail/SMS) jest zalecany jako druga warstwa — patrz README.
 
 name: Healthcheck strony i bazy
 
 on:
   schedule:
-    - cron: '7 */6 * * *'
+    - cron: '*/10 * * * *'
   workflow_dispatch: {}
 
 permissions:
   issues: write
+  actions: read
   contents: read
+
+concurrency:
+  group: healthcheck
+  cancel-in-progress: false
 
 jobs:
   check:
@@ -19,25 +32,43 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Sprawdź stronę i bazę
+      - name: Sprawdź stronę, snapshot, bazę i funkcję zgłoszeń
         id: probe
         shell: bash
         run: |
-          SITE="$(jq -r .site.url config.json)$(jq -r .snapshot.file config.json)"
+          SITE="$(jq -r .site.url config.json)"
+          SNAP="$SITE$(jq -r .snapshot.file config.json)"
           DB_URL="$(jq -r .supabase.url config.json)"
           DB_KEY="$(jq -r .supabase.anonKey config.json)"
           TABLE="$(jq -r .supabase.tables.zbiorniki config.json)"
+          FN="$DB_URL/functions/v1/$(jq -r .links.report.function config.json)"
 
-          site=$(curl -s -m 30 -o /dev/null -w "%{http_code}" "$SITE" || echo 0)
-          db=$(curl -s -m 30 -o /dev/null -w "%{http_code}" \
-                 "$DB_URL/rest/v1/$TABLE?select=id&limit=1" \
-                 -H "apikey: $DB_KEY" -H "Authorization: Bearer $DB_KEY" || echo 0)
-          echo "strona: $site, baza: $db"
+          # Dwie próby w odstępie 20 s — pojedynczy timeout nie liczy się jako awaria.
+          probe() { # $1 = url, reszta = opcje curl
+            local url="$1"; shift
+            local code
+            for i in 1 2; do
+              code=$(curl -s -m 25 -o /dev/null -w "%{http_code}" "$@" "$url" || echo 0)
+              [ "$code" != "0" ] && [ "${code:0:1}" != "5" ] && break
+              [ $i = 1 ] && sleep 20
+            done
+            echo "$code"
+          }
+
+          site=$(probe "$SITE")
+          snap=$(probe "$SNAP")
+          db=$(probe "$DB_URL/rest/v1/$TABLE?select=id&limit=1" -H "apikey: $DB_KEY" -H "Authorization: Bearer $DB_KEY")
+          fn=$(probe "$FN" -X GET)   # oczekiwane 405 (funkcja żyje, GET niedozwolony); 503 = wstrzymane, ale żyje
+          echo "strona: $site, snapshot: $snap, baza: $db, funkcja zgłoszeń: $fn"
 
           report=""
           [ "$site" = "200" ] || report="$report- Strona (GitHub Pages): HTTP $site"$'\n'
-          [ "$db" = "200" ]   || report="$report- Baza: HTTP $db (5xx lub 0 może oznaczać zapauzowany projekt — wznów go w panelu bazy)"$'\n'
+          [ "$snap" = "200" ] || report="$report- Snapshot danych ($(basename "$SNAP")): HTTP $snap"$'\n'
+          [ "$db" = "200" ]   || report="$report- Baza (Supabase REST): HTTP $db (5xx lub 0 może oznaczać zapauzowany projekt — wznów go w panelu bazy)"$'\n'
+          case "$fn" in 405|503|401) ;; *) report="$report- Funkcja zgłoszeń: HTTP $fn (oczekiwane 405)"$'\n';; esac
 
           {
             echo "failed=$([ -n "$report" ] && echo true || echo false)"
@@ -46,36 +77,70 @@ jobs:
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Załóż lub uzupełnij issue o awarii
-        if: steps.probe.outputs.failed == 'true'
+      - name: Seria nieudanych kontroli, alarm i zamknięcie po przywróceniu
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
+          FAILED: ${{ steps.probe.outputs.failed }}
           REPORT: ${{ steps.probe.outputs.report }}
         with:
           script: |
+            const fs = require('fs');
+            const cfg = JSON.parse(fs.readFileSync('config.json', 'utf8')).healthcheck;
+            const failed = process.env.FAILED === 'true';
             const report = process.env.REPORT;
-            const when = new Date().toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
             const repo = { owner: context.repo.owner, repo: context.repo.repo };
-            const { data: open } = await github.rest.issues.listForRepo({ ...repo, state: 'open', labels: 'awaria', per_page: 1 });
-            if (open.length) {
-              await github.rest.issues.createComment({ ...repo, issue_number: open[0].number, body: `Nadal nie działa (${when}):\n${report}` });
-            } else {
-              await github.rest.issues.create({
-                ...repo,
-                title: `Awaria: strona lub baza nie odpowiada (${when})`,
-                body: `Healthcheck z ${when} wykrył problem:\n${report}\nMapa publiczna działa ze snapshotu niezależnie od bazy. Issue zamknie się samo, gdy kontrola przejdzie.`,
-                labels: ['awaria'],
-              });
+            const label = cfg.etykieta || 'awaria';
+            const fmt = (d) => new Date(d).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+
+            // Poprzednie przebiegi tego workflowu (bez bieżącego): ile ostatnich z rzędu było nieudanych.
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              ...repo, workflow_id: 'healthcheck.yml', per_page: 20,
+            });
+            const previous = runs.workflow_runs.filter((r) => r.id !== context.runId && r.status === 'completed');
+            let streak = 0, firstFailedAt = null;
+            for (const r of previous) {
+              if (r.conclusion !== 'failure') break;
+              streak++; firstFailedAt = r.run_started_at;
             }
 
-      - name: Zamknij issue, gdy wszystko działa
-        if: steps.probe.outputs.failed == 'false'
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        with:
-          script: |
-            const repo = { owner: context.repo.owner, repo: context.repo.repo };
-            const { data: open } = await github.rest.issues.listForRepo({ ...repo, state: 'open', labels: 'awaria', per_page: 5 });
+            const { data: open } = await github.rest.issues.listForRepo({ ...repo, state: 'open', labels: label, per_page: 1 });
+
+            if (failed) {
+              const total = streak + 1;
+              const startedAt = firstFailedAt || new Date().toISOString();
+              core.warning(`Kontrola nieudana (${total}. z rzędu, od ${fmt(startedAt)}):\n${report}`);
+              if (open.length) {
+                await github.rest.issues.createComment({ ...repo, issue_number: open[0].number,
+                  body: `Nadal nie działa (${fmt(Date.now())}, ${total}. nieudana kontrola z rzędu):\n${report}` });
+              } else if (total >= (cfg.alarmPoNieudanych || 3)) {
+                const minut = Math.round((Date.now() - new Date(startedAt)) / 60000);
+                const { data: issue } = await github.rest.issues.create({
+                  ...repo,
+                  title: `Awaria: usługa nie odpowiada od ${fmt(startedAt)}`,
+                  body: [
+                    `**Początek awarii:** ${startedAt}`,
+                    `**Wykryto po:** ${total} nieudanych kontrolach (${minut} min).`,
+                    '', '**Co nie działa:**', report,
+                    'Mapa publiczna działa ze snapshotu niezależnie od bazy (jeśli sama strona odpowiada).',
+                    'Issue zamknie się samo, gdy kontrola przejdzie; w komentarzu będzie czas trwania awarii.',
+                  ].join('\n'),
+                  labels: [label],
+                  assignees: cfg.przypisz || [],
+                });
+                core.error(`ALARM: założono issue #${issue.number}`);
+              } else {
+                core.notice(`Bez alarmu: ${total} z ${cfg.alarmPoNieudanych || 3} wymaganych nieudanych kontroli.`);
+              }
+              core.setFailed('Kontrola dostępności nieudana');
+              return;
+            }
+
             for (const issue of open) {
-              await github.rest.issues.createComment({ ...repo, issue_number: issue.number, body: 'Kontrola przeszła — strona i baza odpowiadają. Zamykam.' });
+              const m = /\*\*Początek awarii:\*\* (\S+)/.exec(issue.body || '');
+              const start = m ? new Date(m[1]) : new Date(issue.created_at);
+              const minut = Math.round((Date.now() - start) / 60000);
+              const czas = minut >= 60 ? `${Math.floor(minut / 60)} h ${minut % 60} min` : `${minut} min`;
+              await github.rest.issues.createComment({ ...repo, issue_number: issue.number,
+                body: `Kontrola przeszła — usługi odpowiadają (${fmt(Date.now())}). **Czas trwania awarii: ${czas}** (od ${fmt(start)}). Zamykam.` });
               await github.rest.issues.update({ ...repo, issue_number: issue.number, state: 'closed' });
             }

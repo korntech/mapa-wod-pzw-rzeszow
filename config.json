@@ -15,11 +15,33 @@
   "snapshot": {
     "file": "data.json",
     "candidatesFile": "kandydaci-zbiorniki.json",
-    "bbox": { "lat": [49.0, 51.0], "lon": [20.5, 23.6] },
-    "minRows": { "zb": 40, "rivers": 20, "granice": 10 },
+    "bbox": {
+      "lat": [
+        49.0,
+        51.0
+      ],
+      "lon": [
+        20.5,
+        23.6
+      ]
+    },
+    "minRows": {
+      "zb": 40,
+      "rivers": 20,
+      "granice": 10
+    },
     "maxSegmentMeters": 2000,
     "maxVertexDrop": 0.3,
-    "limits": { "n": 200, "t": 200, "ha": 40, "o": 100, "d": 4000, "r": 4000, "pts": 20000, "fileBytes": 8388608 },
+    "limits": {
+      "n": 200,
+      "t": 200,
+      "ha": 40,
+      "o": 100,
+      "d": 4000,
+      "r": 4000,
+      "pts": 20000,
+      "fileBytes": 8388608
+    },
     "meta": {
       "zrodla": {
         "tresc": "Wykaz wód PZW Okręgu w Rzeszowie",
@@ -30,25 +52,67 @@
     }
   },
   "map": {
-    "center": [50.08, 21.95],
-    "zoom": { "min": 3, "max": 16, "okreg": 6, "okolica": 8, "granica": 9, "zbiornik": 10 },
+    "center": [
+      50.08,
+      21.95
+    ],
+    "zoom": {
+      "min": 3,
+      "max": 16,
+      "okreg": 6,
+      "okolica": 8,
+      "granica": 9,
+      "zbiornik": 10
+    },
     "crs": {
       "code": "EPSG:2180",
       "proj4": "+proj=tmerc +lat_0=0 +lon_0=19 +k=0.9993 +x_0=500000 +y_0=-5300000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs +type=crs",
-      "origin": [100000, 850000],
-      "bounds": [[100000, 100000], [900000, 850000]],
+      "origin": [
+        100000,
+        850000
+      ],
+      "bounds": [
+        [
+          100000,
+          100000
+        ],
+        [
+          900000,
+          850000
+        ]
+      ],
       "tileSize": 512,
       "resolutions": [
-        8466.6836, 4233.3418, 2116.6709, 1058.33545, 529.167725, 264.583863, 132.291931,
-        66.145966, 26.458386, 13.229193, 6.614597, 2.645839, 1.322919, 0.529168,
-        0.264584, 0.132292, 0.066146
+        8466.6836,
+        4233.3418,
+        2116.6709,
+        1058.33545,
+        529.167725,
+        264.583863,
+        132.291931,
+        66.145966,
+        26.458386,
+        13.229193,
+        6.614597,
+        2.645839,
+        1.322919,
+        0.529168,
+        0.264584,
+        0.132292,
+        0.066146
       ]
     }
   },
   "basemaps": {
     "serviceUrl": "https://mapy.geoportal.gov.pl/wss/service/",
-    "attribution": { "text": "Podkład i geometrie: GUGiK · BDOT10k", "url": "https://www.geoportal.gov.pl/" },
-    "default": { "public": "mapa", "admin": "orto" },
+    "attribution": {
+      "text": "Podkład i geometrie: GUGiK · BDOT10k",
+      "url": "https://www.geoportal.gov.pl/"
+    },
+    "default": {
+      "public": "mapa",
+      "admin": "orto"
+    },
     "fallbackAfterErrors": 4,
     "fallbackNotice": "Podkład Geoportalu nie odpowiada — włączono inny podkład GUGiK. Dane łowisk pozostają aktualne.",
     "layers": [
@@ -97,5 +161,14 @@
       "android": "geo:{lat},{lon}?q={lat},{lon}({name})",
       "default": "https://maps.apple.com/?daddr={lat},{lon}&q={name}"
     }
+  },
+  "healthcheck": {
+    "coMinut": 10,
+    "alarmPoNieudanych": 3,
+    "przypisz": [
+      "korntech"
+    ],
+    "etykieta": "awaria",
+    "_opis": "Kontrola co coMinut (harmonogram GitHub Actions bywa opóźniony o kilka minut). Alarm (issue + przypisanie = e-mail/push z GitHuba) po alarmPoNieudanych kolejnych nieudanych kontrolach, czyli po ok. coMinut × alarmPoNieudanych minutach niedostępności; pojedyncza wpadka nie budzi nikogo. Po przywróceniu issue zamyka się z podanym czasem trwania awarii."
   }
 }
