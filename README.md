@@ -31,10 +31,34 @@ Projekt powstał z inicjatywy autora i jest rozwijany we współpracy z Okręgie
 | Dane łowisk | baza Supabase (tabele `zbiorniki`, `rivers`, `granice`): publiczny odczyt, zapis tylko dla operatorów z allow-listy |
 | Snapshot | `public/data.json` — nocna kopia bazy w repozytorium; mapa wczytuje snapshot, a następnie nadpisuje go danymi z bazy (każdą warstwę osobno), więc działa także przy niedostępnej bazie |
 | Podkłady i geometrie | usługi WMTS Geoportalu (EPSG:2180) oraz przebiegi rzek i kontury zbiorników z BDOT10k (GUGiK) |
+| Pamięć podręczna | service worker `public/sw.js`: kafle Geoportalu trzymane w przeglądarce (do 1500 kafli, 30 dni, najstarsze usuwane), `data.json` i strony „najpierw sieć, potem kopia”, skrypty Vite „najpierw kopia”; obejrzany fragment mapy wyświetla się także bez zasięgu — patrz niżej |
 | Panel operatora | `admin.html` — logowanie e-mail + hasło + drugi składnik TOTP (Supabase Auth), edycja pinezek, przebiegów rzek i atrybutów; każda zmiana trafia do `historia_zmian` |
 | Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium (bez konta GitHub) |
 
 W czasie działania strona łączy się wyłącznie z Geoportalem GUGiK i własną bazą (wymusza to CSP w buildzie).
+
+### Kafle podkładu i praca przy słabym zasięgu
+
+Serwer WMTS Geoportalu bywa niestabilny: część żądań kończy się błędem HTTP 500, a Leaflet sam nie ponawia
+nieudanego kafla — stąd szare pola na mapie. Mapa robi więc trzy rzeczy (`src/basemaps.js`, `public/sw.js`):
+
+- **ponawia** nieudany kafel (dwie próby z rosnącym odstępem, service worker dodatkowo raz przy błędzie serwera);
+  dopiero po wyczerpaniu prób liczy błąd do przełączenia na podkład zapasowy;
+- **buforuje kafle** w service workerze (Cache API): kafel raz pobrany jest pokazywany z pamięci przeglądarki
+  przez 30 dni bez pytania serwera, także bez zasięgu. Limit 1500 kafli (rzędu 100 MB przy pełnych kaflach
+  512 px), najstarsze wpisy są usuwane. Regulamin Geoportalu pozwala na taki bufor (kafle mają nagłówek
+  `Cache-Control: max-age=2592000` i CORS `*`) — w przeciwieństwie do polityki serwerów OSM, które zabraniają
+  masowego pobierania;
+- wczytuje kafle dopiero po zakończeniu zoomu i (na telefonie) po zakończeniu przesuwania — mniej porzuconych
+  żądań na 3G — oraz trzyma większy bufor kafli wokół widoku; mapa ma tło w kolorze podkładu i zasięg
+  przesuwania ograniczony do Okręgu z marginesem (`config.json` → `map.bounds`), więc brzeg treści Geoportalu
+  nie wygląda jak błąd.
+
+To nie jest jeszcze pełny tryb offline (nic nie jest pobierane z wyprzedzeniem) — kolejny etap to PWA
+z pobraniem wybranego obszaru. Wyczyszczenie bufora: w przeglądarce **usuń dane witryny** (Chrome: kłódka
+w pasku adresu → Ustawienia witryny → Usuń dane; Safari: Ustawienia → Safari → Zaawansowane → Dane witryn),
+a w kodzie — podniesienie `WERSJA` w `public/sw.js`, które przy najbliższej wizycie usuwa stare wpisy.
+Service worker nie dotyka żądań do bazy (Supabase) ani formularza zgłoszeń. Testy jego reguł: `src/sw.test.mjs`.
 
 ## Uruchomienie lokalne
 
@@ -45,7 +69,7 @@ npm install
 npm run dev        # serwer deweloperski
 npm run build      # wersja produkcyjna do dist/
 npm run preview    # podgląd dist/ pod ścieżką z config.json
-npm test           # testy: walidacja i obsługa zgłoszeń, limit body, rodzaje zbiorników, filtry, formularz
+npm test           # testy: walidacja i obsługa zgłoszeń, limit body, rodzaje zbiorników, filtry, formularz, reguły service workera
 npm run check      # składnia skryptów, walidacja snapshotu, testy (CI robi to samo, plus build i próbę migracji)
 ```
 
@@ -63,6 +87,7 @@ Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.j
 | `index.html`, `admin.html`, `wykaz.html` | strony: mapa publiczna, panel operatora, wykaz do druku |
 | `src/` | logika stron (`main.js`, `admin.js`, `wykaz.js`), warstwa danych (`data.js`), układ współrzędnych i podkłady (`crs.js`, `basemaps.js`), obliczenia (`geo.js`), dostęp do konfiguracji (`config.js`) |
 | `public/data.json` | snapshot bazy (odświeżany co noc) |
+| `public/sw.js` | service worker: pamięć podręczna kafli Geoportalu i plików strony (kopiowany do `dist/` bez hasha) |
 | `public/kandydaci-zbiorniki.json` | propozycje akwenów z BDOT10k dla zbiorników o lokalizacji przybliżonej (używane w panelu) |
 | `config.json` | cała konfiguracja (patrz niżej) |
 | `supabase/migrations/` | schemat bazy i wszystkie zmiany, w kolejności znaczników czasu; wykonywane na produkcji przez integrację Supabase z GitHubem po scaleniu do `main` |
@@ -96,7 +121,7 @@ w `src/zbiorniki-typ.js`; korzysta z niego mapa, panel, wykaz do druku i skrypty
 | `site` | ścieżka bazowa i adres publiczny strony |
 | `supabase` | adres projektu, klucz publiczny (`anonKey`), nazwy tabel |
 | `snapshot` | nazwy plików snapshotu i kandydatów, obrys i progi walidacji, metadane źródeł |
-| `map` | środek i poziomy zoomu, układ współrzędnych i siatka kafli |
+| `map` | środek i poziomy zoomu, zasięg przesuwania (`bounds`: margines wokół obrysu danych i „lepkość” krawędzi), układ współrzędnych i siatka kafli |
 | `basemaps` | adres usługi WMTS, warstwy podkładów, podkład domyślny mapy i panelu, komunikat awaryjny |
 | `links` | linki zewnętrzne: wykaz PZW, repozytorium, instrukcja, szablony nawigacji, nazwa funkcji zgłoszeń `report.function` i zapasowy formularz `report.issues` |
 

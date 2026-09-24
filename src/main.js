@@ -340,6 +340,17 @@ function initMap(data, snapshotDate) {
   initUi(map, layers, entries, snapshotDate);
 }
 
+/** Service worker z pamięcią podręczną kafli Geoportalu i plików strony (public/sw.js).
+ *  Rejestracja po wczytaniu strony, żeby nie konkurować z pobieraniem danych; brak wsparcia
+ *  (np. tryb prywatny) niczego nie zmienia — mapa działa jak dotąd. */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  const base = import.meta.env.BASE_URL;
+  const register = () => navigator.serviceWorker.register(base + 'sw.js', { scope: base }).catch(() => {});
+  if (document.readyState === 'complete') register();
+  else window.addEventListener('load', register, { once: true });
+}
+
 /** Wysyła zgłoszenie do funkcji Supabase; odpowiedź funkcji (także błędną) zwraca bez zmian. */
 async function sendReport(report) {
   const sb = getSupabase();
@@ -392,4 +403,5 @@ async function main() {
   initReporting(data);
 }
 
+registerServiceWorker();
 main();
