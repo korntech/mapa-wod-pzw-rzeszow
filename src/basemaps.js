@@ -7,6 +7,10 @@ const { serviceUrl, attribution, layers, fallbackAfterErrors, fallbackNotice } =
 
 export const ATTRIBUTION = `<a href="${attribution.url}" target="_blank" rel="noopener noreferrer">${attribution.text}</a>`;
 
+/** Opóźnienia kolejnych prób wczytania kafla po błędzie (Geoportal bywa chwilowo niedostępny —
+ *  pojedyncze żądania kończą się HTTP 500 i bez ponowienia kafel zostałby pusty). */
+export const RETRY_DELAYS_MS = [700, 2000];
+
 /** Adres kafla WMTS 1.0.0 (kodowanie KVP) dla podanej usługi i warstwy. */
 function tileUrl(def) {
   const query = [
@@ -35,13 +39,46 @@ function tileLayer(def) {
     maxNativeZoom: def.maxNativeZoom,
     minZoom: ZOOM.min,
     maxZoom: ZOOM.max,
-    updateWhenIdle: true,
-    keepBuffer: 2,
+    // Kafle wczytywane dopiero po zakończeniu zoomu (nie na każdym pośrednim poziomie
+    // przy szczypaniu), a przy przesuwaniu na telefonie po zakończeniu ruchu — mniej
+    // porzuconych żądań przy słabym zasięgu. keepBuffer trzyma kafle wokół widoku,
+    // więc cofnięcie ruchu nie wymaga ponownego pobrania.
+    updateWhenZooming: false,
+    updateWhenIdle: L.Browser.mobile,
+    updateInterval: 250,
+    keepBuffer: 3,
+    // Żądania CORS: Geoportal odsyła Access-Control-Allow-Origin: *, a dzięki temu service
+    // worker (public/sw.js) widzi status odpowiedzi i buforuje tylko poprawne kafle.
+    crossOrigin: 'anonymous',
   });
 }
 
-/** Podmienia warstwę na zapasową, gdy pierwsze żądania kafli kończą się błędem
- *  i żaden kafel nie został wczytany. */
+/**
+ * Ponawia wczytanie kafla po błędzie (z rosnącym odstępem), o ile kafel nadal jest na mapie
+ * i poziom zoomu się nie zmienił. Po wyczerpaniu prób warstwa emituje zdarzenie `tilegiveup`.
+ * Leaflet sam nie ponawia — nieudany kafel zostaje pusty do zmiany widoku.
+ */
+export function retryFailedTiles(layer, delays = RETRY_DELAYS_MS) {
+  const attempts = new WeakMap();
+  layer.on('tileerror', (e) => {
+    const tile = e.tile;
+    const n = attempts.get(tile) || 0;
+    if (n >= delays.length || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+      layer.fire('tilegiveup', { tile, coords: e.coords });
+      return;
+    }
+    attempts.set(tile, n + 1);
+    setTimeout(() => {
+      // _tileZoom: bieżący poziom kafli warstwy (po ograniczeniu do zakresu native).
+      if (!tile.isConnected || !layer._map || layer._tileZoom !== e.coords.z) return;
+      if (tile.getAttribute('src') === L.Util.emptyImageUrl) return;
+      tile.src = layer.getTileUrl(e.coords);
+    }, delays[n]);
+  });
+}
+
+/** Podmienia warstwę na zapasową, gdy pierwsze kafle (po wyczerpaniu ponowień) kończą się
+ *  błędem i żaden kafel nie został wczytany. */
 function withFallback(map, primary, fallback, onSwitch) {
   let loaded = 0,
     errors = 0,
@@ -49,7 +86,7 @@ function withFallback(map, primary, fallback, onSwitch) {
   primary.on('tileload', () => {
     loaded++;
   });
-  primary.on('tileerror', () => {
+  primary.on('tilegiveup', () => {
     errors++;
     if (switched || loaded > 0 || errors < fallbackAfterErrors) return;
     switched = true;
@@ -96,6 +133,7 @@ export function initBasemaps(map, defaultId) {
   const control = {};
   for (const def of layers) {
     byId[def.id] = tileLayer(def);
+    retryFailedTiles(byId[def.id]);
     control[def.title] = byId[def.id];
   }
 
