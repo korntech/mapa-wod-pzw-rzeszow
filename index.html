@@ -55,6 +55,7 @@ header small{opacity:.75}
 .modal .close{background:none;border:none;font-size:24px;line-height:1;color:#666;cursor:pointer;padding:0 4px;margin:-4px -6px 0 0}
 .modal .close:hover{color:#0d3b66}
 .modal-form label{display:block;margin-top:10px;font-weight:600;font-size:13px}
+.modal-form label[hidden]{display:none}
 .modal-form select,.modal-form textarea,.modal-form input{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;margin-top:4px;background:#fff}
 .modal-form textarea{min-height:110px;resize:vertical}
 .modal-form .hint{font-size:12px;color:#666;font-weight:400}
@@ -118,21 +119,24 @@ header small{opacity:.75}
 <p><b>Źródło danych o łowiskach:</b> „Wykaz wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania" — oficjalna książeczka Okręgu PZW Rzeszów na rok 2026 (<a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer">otwórz wykaz na stronie PZW</a>).</p>
 <p style="margin-top:8px"><b>Podkład i geometrie:</b> Główny Urząd Geodezji i Kartografii — mapa topograficzna i ortofotomapa (usługi WMTS Geoportalu) oraz Baza Danych Obiektów Topograficznych BDOT10k (przebiegi rzek i kontury zbiorników); dane z państwowego zasobu geodezyjnego, bezpłatne do ponownego wykorzystania. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠), a granice obwodów na rzekach wyznaczono orientacyjnie.</p>
 <p style="margin-top:8px;color:#b26a00"><b>Uwaga:</b> mapa ma charakter poglądowy. Przed wędkowaniem zweryfikuj zasady w aktualnym zezwoleniu i wykazie PZW.</p>
-<p style="margin-top:8px"><b>Projekt open source:</b> <a data-link="repo" href="#" target="_blank" rel="noopener noreferrer">repozytorium na GitHubie</a> — zauważyłeś(-aś) błąd w danych? <a href="#" data-report="">Zgłoś go przez formularz</a> — nie wymaga konta.</p>
+<p style="margin-top:8px"><b>Zauważyłeś(-aś) błąd na mapie albo brakuje łowiska?</b> <a href="#" data-report="">Zgłoś uwagę</a> — krótki formularz, nie wymaga konta. Projekt jest otwarty: <a data-link="repo" href="#" target="_blank" rel="noopener noreferrer">kod i dane</a> są publiczne.</p>
 <p id="stan-danych" style="margin-top:8px;color:#888;font-size:12px">Dane odświeżane co noc z bazy Okręgu.</p>
 </div></div>
 <div id="reportmodal" class="modal">
 <div>
-<h2>Zgłoś błąd w danych <button type="button" class="close" data-close aria-label="Zamknij">×</button></h2>
+<h2>Zgłoś uwagę do mapy <button type="button" class="close" data-close aria-label="Zamknij">×</button></h2>
 <form id="reportform" class="modal-form" novalidate>
-<p class="hint">Opis zgłoszenia trafi jako publiczne issue do repozytorium projektu — nie wpisuj w nim danych, których nie chcesz upubliczniać. Kontakt nie jest publikowany. Adres IP nadawcy i kontakt są przechowywane w bazie Okręgu przez 30 dni (ograniczenie nadużyć i odpowiedź na zgłoszenie), po czym są usuwane automatycznie.</p>
+<p class="hint">Zgłoszenie jest publiczne (widoczne dla wszystkich na stronie projektu) — nie wpisuj w opisie danych, których nie chcesz upubliczniać. Kontakt widzą tylko operatorzy Okręgu. Adres nadawcy (IP) i kontakt przechowujemy przez 30 dni, potem są usuwane automatycznie.</p>
 <label>Woda
-<select name="woda" required><option value="">— wybierz zbiornik lub rzekę —</option></select>
+<select name="woda" required><option value="">— wybierz zbiornik lub rzekę —</option><option value="inne">Inne — brakujące łowisko lub uwaga ogólna</option></select>
 </label>
-<label>Co jest nie tak? <span class="hint">(10–2000 znaków)</span>
-<textarea name="opis" required minlength="10" maxlength="2000" placeholder="Np. zbiornik jest zaznaczony w złym miejscu, zasady są nieaktualne, brakuje odcinka rzeki…"></textarea>
+<label id="rep-inne" hidden>Czego dotyczy zgłoszenie <span class="hint">(nazwa wody lub miejsce, 2–200 znaków)</span>
+<input name="nazwa" maxlength="200" autocomplete="off" placeholder="Np. Staw w Boguchwale, cała mapa…">
 </label>
-<label>Kontakt <span class="hint">(opcjonalnie — e-mail lub telefon; widoczny tylko dla operatorów Okręgu, nie w publicznym issue)</span>
+<label>Co chcesz zgłosić? <span class="hint">(10–2000 znaków)</span>
+<textarea name="opis" required minlength="10" maxlength="2000" placeholder="Np. zbiornik jest zaznaczony w złym miejscu, zasady są nieaktualne, brakuje łowiska, łowisko już nie należy do Okręgu…"></textarea>
+</label>
+<label>Kontakt <span class="hint">(opcjonalnie — e-mail lub telefon; widzą go tylko operatorzy Okręgu, nie jest publikowany)</span>
 <input name="kontakt" maxlength="200" autocomplete="off">
 </label>
 <label class="hp" aria-hidden="true">Strona www<input name="www" tabindex="-1" autocomplete="off"></label>

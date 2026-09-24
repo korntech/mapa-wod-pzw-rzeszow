@@ -51,7 +51,7 @@ function popupHtml({ title, tag, tagColor, body, rules, approx, position, report
   if (rules) html += `<div class="rules"><b>Zasady:</b> ${esc(rules)}</div>`;
   html +=
     `<div style="margin-top:6px"><a target="_blank" rel="noopener noreferrer" href="${esc(navigationUrl(position, title))}">🧭 Nawiguj</a>` +
-    ` · <a href="#" data-report="${esc(reportKey)}">✉️ Zgłoś błąd</a></div>`;
+    ` · <a href="#" data-report="${esc(reportKey)}">✉️ Zgłoś uwagę</a></div>`;
   return html;
 }
 

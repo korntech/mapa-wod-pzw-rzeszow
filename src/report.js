@@ -1,6 +1,10 @@
-/* Zgłaszanie błędów w danych: lista wód do wyboru i formularz wysyłający
- * zgłoszenie do funkcji Supabase, która zakłada issue w repozytorium. */
+/* Zgłaszanie uwag do mapy: lista wód do wyboru (albo „Inne” z nazwą wpisaną ręcznie)
+ * i formularz wysyłający zgłoszenie do funkcji Supabase, która zapisuje je publicznie
+ * na stronie projektu (issue w repozytorium). */
 import { validateReport, issueContent, LIMITY } from '../supabase/functions/zglos-blad/zgloszenie.js';
+
+/** Wartość pozycji „Inne — brakujące łowisko lub uwaga ogólna” na liście wód (poza grupami). */
+export const INNE = 'inne';
 
 /** Wody do wyboru w formularzu, posortowane po nazwie; klucz łączy pozycję z popupem na mapie. */
 export function waterOptions(data) {
@@ -19,8 +23,8 @@ export function waterOptions(data) {
 }
 
 const KOMUNIKATY = {
-  typ: 'Wybierz zbiornik lub rzekę z listy.',
-  nazwa: 'Wybierz zbiornik lub rzekę z listy.',
+  typ: 'Wybierz zbiornik lub rzekę z listy albo „Inne”.',
+  nazwa: `Wpisz, czego dotyczy zgłoszenie (${LIMITY.nazwaMin}–${LIMITY.nazwaMax} znaków).`,
   wspolrzedne: 'Wybierz zbiornik lub rzekę z listy.',
   opis: `Opis musi mieć od ${LIMITY.opisMin} do ${LIMITY.opisMax} znaków.`,
   spam: 'Zgłoszenie zostało odrzucone.',
@@ -29,24 +33,26 @@ const KOMUNIKATY = {
   limit: 'Za dużo zgłoszeń z tego adresu w ciągu godziny. Spróbuj później.',
   powtorka: 'Takie zgłoszenie już dziś wpłynęło — dziękujemy, jest w kolejce do sprawdzenia.',
   wstrzymane: 'Przyjmowanie zgłoszeń jest chwilowo wstrzymane.',
-  github: 'Nie udało się założyć zgłoszenia na GitHubie.',
+  github: 'Nie udało się zapisać zgłoszenia na stronie projektu.',
   baza: 'Serwer zgłoszeń jest chwilowo niedostępny.',
   siec: 'Nie udało się połączyć z serwerem zgłoszeń.',
 };
 
-/* Przy tych błędach zgłaszający może założyć issue sam, przez formularz GitHuba z gotową treścią. */
+/* Przy tych błędach zgłaszający może dodać zgłoszenie sam, przez stronę projektu (GitHub)
+ * z gotową treścią — wymaga to konta. */
 const Z_LINKIEM_ZAPASOWYM = new Set(['github', 'baza', 'siec']);
 
 /**
  * Podpina formularz zgłoszeń (#reportmodal). `send(report)` zwraca odpowiedź funkcji
- * ({ ok, numer, url } albo { ok: false, error }); `issuesUrl` to zapasowy formularz GitHuba.
- * Zwraca { open(key) } do otwierania modalu z wybraną wodą.
+ * ({ ok, numer, url } albo { ok: false, error }); `issuesUrl` to zapasowy formularz na stronie projektu.
+ * Zwraca { open(key) } do otwierania modalu z wybraną wodą (klucz z listy albo „inne”).
  */
 export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   const modal = document.getElementById('reportmodal');
   const form = document.getElementById('reportform');
   const done = document.getElementById('rep-done');
   const select = form.elements.woda;
+  const nazwaPole = document.getElementById('rep-inne');
   const button = form.querySelector('button[type=submit]');
   const status = form.querySelector('.status');
   const byKey = Object.fromEntries(options.map((o) => [o.key, o]));
@@ -61,14 +67,21 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
     select.appendChild(group);
   }
 
+  /* Pole „Czego dotyczy zgłoszenie” tylko przy „Inne”; dla wody z listy nazwa i położenie idą z danych. */
+  function pokazNazwe() {
+    nazwaPole.hidden = select.value !== INNE;
+  }
+  select.addEventListener('change', pokazNazwe);
+
   function open(key) {
     form.reset();
     status.replaceChildren();
     form.style.display = '';
     done.style.display = 'none';
-    if (key && byKey[key]) select.value = key;
+    if (key && (key === INNE || byKey[key])) select.value = key;
+    pokazNazwe();
     modal.style.display = 'flex';
-    (select.value ? form.elements.opis : select).focus();
+    (select.value === INNE ? form.elements.nazwa : select.value ? form.elements.opis : select).focus();
   }
 
   function showError(code, report) {
@@ -79,7 +92,7 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
     link.href = `${issuesUrl}?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`;
     link.target = '_blank';
     link.rel = 'noopener noreferrer';
-    link.textContent = 'Załóż zgłoszenie na GitHubie samodzielnie';
+    link.textContent = 'Dodaj zgłoszenie bezpośrednio na stronie projektu (wymaga konta GitHub)';
     status.append(' ', link, '.');
   }
 
@@ -87,7 +100,7 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
     done.querySelector('[data-numer]').textContent = numer;
     const link = done.querySelector('a');
     link.href = url;
-    link.textContent = `zgłoszenie #${numer} na GitHubie`;
+    link.textContent = `Zobacz swoje zgłoszenie (nr ${numer})`;
     form.style.display = 'none';
     done.style.display = 'block';
     done.querySelector('[data-close]').focus();
@@ -95,12 +108,13 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
 
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const woda = byKey[select.value];
+    const inne = select.value === INNE;
+    const woda = inne ? null : byKey[select.value];
     const wynik = validateReport({
-      typ: woda && woda.typ,
-      nazwa: woda && woda.nazwa,
-      lat: woda && woda.lat,
-      lon: woda && woda.lon,
+      typ: inne ? INNE : woda && woda.typ,
+      nazwa: inne ? form.elements.nazwa.value : woda && woda.nazwa,
+      lat: woda ? woda.lat : null,
+      lon: woda ? woda.lon : null,
       opis: form.elements.opis.value,
       kontakt: form.elements.kontakt.value,
       www: form.elements.www.value,

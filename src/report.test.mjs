@@ -101,8 +101,17 @@ test('otwarcie z kluczem pokazuje modal z wybraną wodą', () => {
   assert.equal(el('select[name=woda]').selectedOptions[0].textContent, 'Stobnica');
 });
 
-test('lista wód ma dwie grupy: zbiorniki i rzeki', () => {
+test('lista wód ma pozycję „Inne” przed grupami zbiorników i rzek', () => {
   const { el } = setupForm();
+  const select = el('select[name=woda]');
+  assert.deepEqual(
+    [...select.children].slice(0, 2).map((o) => [o.tagName, o.value]),
+    [
+      ['OPTION', ''],
+      ['OPTION', 'inne'],
+    ]
+  );
+  assert.match(select.children[1].textContent, /^Inne — brakujące łowisko/);
   const groups = [...el('select[name=woda]').querySelectorAll('optgroup')].map((g) => [
     g.label,
     g.children.length,
@@ -141,7 +150,7 @@ test('poprawne zgłoszenie trafia do send i pokazuje numer issue', async () => {
   assert.equal(el('#reportform').style.display, 'none');
   assert.equal(el('#rep-done').style.display, 'block');
   assert.equal(el('#rep-done [data-numer]').textContent, '7');
-  assert.equal(el('#rep-done a').textContent, 'zgłoszenie #7 na GitHubie');
+  assert.equal(el('#rep-done a').textContent, 'Zobacz swoje zgłoszenie (nr 7)');
   assert.equal(el('#rep-done a').href, 'https://github.com/x/y/issues/7');
 });
 
@@ -150,8 +159,9 @@ test('błąd GitHuba pokazuje komunikat i link zapasowy z gotową treścią', as
   form.open('zb:1');
   el('textarea[name=opis]').value = 'Nieaktualne zasady połowu.';
   await submit();
-  assert.match(el('.status').textContent, /Nie udało się założyć zgłoszenia/);
+  assert.match(el('.status').textContent, /Nie udało się zapisać zgłoszenia/);
   const link = el('.status a');
+  assert.match(link.textContent, /na stronie projektu/);
   assert.ok(link.href.startsWith('https://github.com/x/y/issues/new?title='));
   assert.match(decodeURIComponent(link.href), /Zgłoszenie: Bratkowice/);
   assert.match(decodeURIComponent(link.href), /Nieaktualne zasady połowu\./);
@@ -211,4 +221,75 @@ test('ponowne otwarcie po sukcesie pokazuje czysty formularz', async () => {
   assert.equal(el('#rep-done').style.display, 'none');
   assert.equal(el('textarea[name=opis]').value, '');
   assert.equal(el('select[name=woda]').value, 'rzeka:0');
+});
+
+/* ===== „Inne — brakujące łowisko lub uwaga ogólna” ===== */
+
+test('pole „Czego dotyczy zgłoszenie” pojawia się tylko po wyborze „Inne”', () => {
+  const { dom, form, el } = setupForm();
+  form.open('zb:0');
+  assert.equal(el('#rep-inne').hidden, true);
+  const select = el('select[name=woda]');
+  select.value = 'inne';
+  select.dispatchEvent(new dom.window.Event('change'));
+  assert.equal(el('#rep-inne').hidden, false);
+  select.value = 'rzeka:0';
+  select.dispatchEvent(new dom.window.Event('change'));
+  assert.equal(el('#rep-inne').hidden, true);
+
+  form.open('inne');
+  assert.equal(select.value, 'inne');
+  assert.equal(el('#rep-inne').hidden, false);
+  form.open('zb:1');
+  assert.equal(el('#rep-inne').hidden, true);
+});
+
+test('„Inne” bez nazwy pokazuje komunikat i nie wysyła', async () => {
+  const { form, el, calls, submit } = setupForm();
+  form.open('inne');
+  el('textarea[name=opis]').value = 'Brakuje tego łowiska na mapie.';
+  await submit();
+  assert.equal(calls.length, 0);
+  assert.match(el('.status').textContent, /Wpisz, czego dotyczy zgłoszenie/);
+});
+
+test('„Inne” z nazwą wysyła typ inne, nazwę użytkownika i lat/lon null', async () => {
+  const { form, el, calls, submit } = setupForm();
+  form.open('inne');
+  el('input[name=nazwa]').value = '  Staw w Boguchwale ';
+  el('textarea[name=opis]').value = 'Brakuje tego łowiska na mapie.';
+  await submit();
+  assert.deepEqual(calls, [
+    {
+      typ: 'inne',
+      nazwa: 'Staw w Boguchwale',
+      lat: null,
+      lon: null,
+      opis: 'Brakuje tego łowiska na mapie.',
+      kontakt: '',
+    },
+  ]);
+  assert.equal(el('#rep-done').style.display, 'block');
+});
+
+test('nazwa wpisana przy „Inne” nie wycieka do zgłoszenia wody z listy', async () => {
+  const { dom, form, el, calls, submit } = setupForm();
+  form.open('inne');
+  el('input[name=nazwa]').value = 'Staw w Boguchwale';
+  const select = el('select[name=woda]');
+  select.value = 'zb:1';
+  select.dispatchEvent(new dom.window.Event('change'));
+  el('textarea[name=opis]').value = 'Nieaktualne zasady połowu.';
+  await submit();
+  assert.equal(calls[0].typ, 'zb');
+  assert.equal(calls[0].nazwa, 'Bratkowice');
+  assert.equal(calls[0].lat, 50.1);
+});
+
+test('teksty formularza nie używają żargonu (issue, repozytorium)', () => {
+  const { el } = setupForm();
+  const tekst = el('#reportmodal').textContent;
+  assert.doesNotMatch(tekst, /issue|repozytori/i);
+  assert.match(tekst, /Zgłoś uwagę do mapy/);
+  assert.match(tekst, /Co chcesz zgłosić\?/);
 });

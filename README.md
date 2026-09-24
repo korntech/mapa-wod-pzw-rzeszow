@@ -185,17 +185,31 @@ Kont operatorów i tabeli `zgloszenia` snapshot nie obejmuje — są tylko w Sup
 
 ## Zgłoszenia błędów z mapy
 
-„Zgłoś błąd” w popupie łowiska i w oknie „O mapie” otwiera formularz (zbiornik lub rzeka, opis,
-opcjonalny kontakt). Stronę obsługuje funkcja Supabase [`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts):
-sprawdza treść (ścisły schemat pól), **atomowo rezerwuje limit** w bazie (funkcja SQL
+„Zgłoś uwagę” w popupie łowiska i w oknie „O mapie” otwiera formularz „Zgłoś uwagę do mapy”: woda
+z listy (zbiornik lub rzeka — nazwa i współrzędne z danych mapy) **albo pozycja „Inne — brakujące łowisko
+lub uwaga ogólna”** (typ `inne`: zgłaszający wpisuje sam, czego dotyczy zgłoszenie, 2–200 znaków; współrzędne
+są `null`), opis (10–2000 znaków), opcjonalny kontakt. Teksty formularza są pisane dla wędkarza, nie
+dla dewelopera — bez „issue” czy „repozytorium”; zgłoszenie jest opisane jako „publiczne, widoczne na stronie
+projektu”. Stronę obsługuje funkcja Supabase [`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts):
+sprawdza treść (ścisły schemat pól — te same klucze dla każdego typu), **atomowo rezerwuje limit** w bazie (funkcja SQL
 `zgloszenie_rezerwuj` pod blokadą — wpis w tabeli `zgloszenia` powstaje przed issue), a dopiero potem
 zakłada issue z etykietą `zgłoszenie` i uzupełnia wpis numerem issue. Żądanie, które nie zwiększyło
 licznika, nigdy nie tworzy issue; nieudane założenie issue zostawia wpis ze statusem `blad`. Gdy funkcja
-nie odpowiada, formularz pokazuje zapasowy link do issue na GitHubie z gotową treścią. Walidacja i treść
+nie odpowiada, formularz pokazuje zapasowy link do formularza issue na GitHubie z gotową treścią (nazwany
+„Dodaj zgłoszenie bezpośrednio na stronie projektu”, wymaga konta). Walidacja i treść
 issue są w module [`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js) współdzielonym ze stroną,
 logika obsługi w [`obsluga.js`](supabase/functions/zglos-blad/obsluga.js) (testy: `npm test`).
-Opis zgłaszającego trafia do issue jako blok kodu (bez Markdown, linków i wzmianek); **kontakt nie jest
-publikowany** — zostaje w tabeli `zgloszenia`, dostępnej operatorom w panelu Supabase.
+Opis zgłaszającego trafia do issue jako blok kodu (bez Markdown, linków i wzmianek), a nazwa — w kodzie
+liniowym z usuniętymi znakami Markdown, `#` i `@` (przy typie `inne` to również tekst użytkownika); linia
+„Współrzędne” pojawia się tylko, gdy są. **Kontakt nie jest publikowany** — zostaje w tabeli `zgloszenia`,
+dostępnej operatorom w panelu Supabase. Triage (`tools/triage`) rozpoznaje typ `inne` i nie szuka dla niego
+rekordu na mapie.
+
+Typ `inne` wymaga migracji `20260924104542_zgloszenia_inne.sql` (CHECK `typ` rozszerzony o `'inne'`,
+kolumny `lat`/`lon` bez `not null`, CHECK `zgloszenia_pola_check`: obie współrzędne `null` tylko przy `inne`,
+inaczej obie w zakresie; funkcja `zgloszenie_rezerwuj` bez zmiany podpisu). Kolejność wdrożenia: **najpierw
+migracja** (scalenie do `main` → integracja Supabase), **potem deploy funkcji** — stara funkcja z nową bazą
+działa, nowa funkcja ze starą bazą odrzuci zgłoszenia `inne` błędem bazy.
 
 Wdrożenie funkcji (raz): token GitHub *fine-grained* ograniczony do tego repozytorium
 z uprawnieniem **Issues: Read and write**, sekrety i deploy przez CLI Supabase:

@@ -9,7 +9,8 @@
  * Żądanie, które nie zwiększyło licznika, nigdy nie tworzy issue. */
 import { validateReport, issueContent } from './zgloszenie.js';
 
-/** @typedef {{ ip: string, typ: string, nazwa: string, lat: number, lon: number, opis: string, kontakt: string }} Rezerwacja */
+/** Współrzędne są null dla typu „inne” (brakujące łowisko / uwaga ogólna — bez rekordu na mapie).
+ * @typedef {{ ip: string, typ: string, nazwa: string, lat: number|null, lon: number|null, opis: string, kontakt: string }} Rezerwacja */
 
 /**
  * @param {object} deps

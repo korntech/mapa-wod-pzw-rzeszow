@@ -135,3 +135,6 @@ kończy rysowanie; uzupełnij formularz i **💾 Zapisz**. Linia musi mieć co n
 - Sprawy techniczne (konta, hasła, baza, awarie): osoba techniczna opiekująca się mapą, wskazana przez Okręg.
 - Błędy w danych zauważone przez wędkarzy trafiają jako zgłoszenia do repozytorium projektu
   (zakładka *Issues*) albo — jeśli Okręg poda adres — na skrzynkę Okręgu; warto je przeglądać i poprawiać w panelu.
+  Zgłoszenie z formularza wskazuje zbiornik lub rzekę z mapy, albo ma typ „inne” (brakujące łowisko,
+  łowisko już nie należące do Okręgu, uwaga ogólna) — wtedy nie odnosi się do żadnego rekordu na mapie
+  i bez współrzędnych; nazwę wpisał sam zgłaszający, więc trzeba ją odszukać w wykazie.

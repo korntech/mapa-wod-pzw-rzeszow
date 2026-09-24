@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
         p_ip: r.ip,
         p_typ: r.typ,
         p_nazwa: r.nazwa,
-        p_lat: r.lat,
+        p_lat: r.lat, // null dla typu „inne” (kolumny lat/lon dopuszczają null od migracji 2026-09-24)
         p_lon: r.lon,
         p_opis: r.opis,
         p_kontakt: r.kontakt || null,

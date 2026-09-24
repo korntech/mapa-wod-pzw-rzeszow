@@ -28,10 +28,11 @@ export function loadMapData() {
   return { data, candidates };
 }
 
-/** Pola „Woda” i „Współrzędne” z treści issue założonego przez formularz. */
+/** Pola „Woda” i „Współrzędne” z treści issue założonego przez formularz.
+ *  Nazwa może być w kodzie liniowym (`…`), a typ „inne” nie ma rekordu na mapie ani współrzędnych. */
 export function parseIssueBody(body) {
   const text = String(body || '');
-  const woda = /\*\*Woda:\*\*\s*(.+?)\s*\((zbiornik|rzeka)\)/.exec(text);
+  const woda = /\*\*Woda:\*\*\s*`?(.+?)`?\s*\((zbiornik|rzeka|inne)\)/.exec(text);
   const wsp = /\*\*Współrzędne:\*\*\s*([-\d.]+),\s*([-\d.]+)/.exec(text);
   return {
     nazwa: woda ? woda[1].trim() : null,

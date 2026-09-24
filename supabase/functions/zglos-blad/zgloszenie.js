@@ -1,10 +1,12 @@
-/* Walidacja zgłoszenia błędu i treść issue na GitHubie. Moduł bez zależności,
+/* Walidacja zgłoszenia z mapy i treść issue na GitHubie. Moduł bez zależności,
  * współdzielony przez stronę (podgląd i link zapasowy) i funkcję Supabase. */
 
 export const LIMITY = {
   opisMin: 10,
   opisMax: 2000,
   kontaktMax: 200,
+  /** Nazwa wpisana ręcznie przy typie „inne”; nazwy z listy są zawsze dłuższe. */
+  nazwaMin: 2,
   nazwaMax: 200,
   naGodzine: 5,
   lacznieNaGodzine: 20,
@@ -14,12 +16,17 @@ export const LIMITY = {
   bodyBajty: 16 * 1024,
 };
 
-export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka' };
+/* „zb” i „rzeka” to pozycje z listy na mapie (nazwa i współrzędne z danych);
+ * „inne” to brakujące łowisko albo uwaga ogólna — nazwę wpisuje zgłaszający, współrzędnych brak. */
+export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka', inne: 'inne' };
 
 /** Jedyne dozwolone pola wejścia; każde inne oznacza odrzucenie (ścisły schemat). */
 const POLA = new Set(['typ', 'nazwa', 'lat', 'lon', 'opis', 'kontakt', 'www']);
 
 const tekst = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+const brak = (v) => v === null || v === undefined || v === '';
+/** Współrzędna z liczby albo niepustego napisu; wszystko inne (w tym '' → 0) to NaN. */
+const liczba = (v) => (typeof v === 'number' || (typeof v === 'string' && v.trim() !== '') ? Number(v) : NaN);
 
 /** Sprawdza dane z formularza; zwraca { ok, report } albo { ok: false, error } z nazwą pola. */
 export function validateReport(input) {
@@ -28,18 +35,28 @@ export function validateReport(input) {
   for (const key of Object.keys(input)) if (!POLA.has(key)) return { ok: false, error: 'schemat' };
   if (typeof input.typ !== 'string' || !Object.hasOwn(TYPY, input.typ)) return { ok: false, error: 'typ' };
   if (tekst(input.www, 1)) return { ok: false, error: 'spam' };
-  const nazwa = tekst(input.nazwa, LIMITY.nazwaMax);
-  if (!nazwa) return { ok: false, error: 'nazwa' };
-  const lat = typeof input.lat === 'number' || typeof input.lat === 'string' ? Number(input.lat) : NaN;
-  const lon = typeof input.lon === 'number' || typeof input.lon === 'string' ? Number(input.lon) : NaN;
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
-    return { ok: false, error: 'wspolrzedne' };
+  // Nazwa w jednej linii: przy „inne” pochodzi od użytkownika i trafia do issue poza blokiem kodu.
+  const nazwa = tekst(input.nazwa, LIMITY.nazwaMax).replace(/\s+/g, ' ').trim();
+  if (!nazwa || (input.typ === 'inne' && nazwa.length < LIMITY.nazwaMin))
+    return { ok: false, error: 'nazwa' };
+  // Współrzędne: dla wody z listy wymagane; dla „inne” opcjonalne (obie puste → null),
+  // ale jeśli podane, muszą być poprawne.
+  let lat = null;
+  let lon = null;
+  if (input.typ !== 'inne' || !brak(input.lat) || !brak(input.lon)) {
+    lat = liczba(input.lat);
+    lon = liczba(input.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) {
+      return { ok: false, error: 'wspolrzedne' };
+    }
+    const round = (x) => Math.round(x * 1e6) / 1e6;
+    lat = round(lat);
+    lon = round(lon);
   }
   const opis = tekst(input.opis, LIMITY.opisMax + 1);
   if (opis.length < LIMITY.opisMin || opis.length > LIMITY.opisMax) return { ok: false, error: 'opis' };
   const kontakt = tekst(input.kontakt, LIMITY.kontaktMax);
-  const round = (x) => Math.round(x * 1e6) / 1e6;
-  return { ok: true, report: { typ: input.typ, nazwa, lat: round(lat), lon: round(lon), opis, kontakt } };
+  return { ok: true, report: { typ: input.typ, nazwa, lat, lon, opis, kontakt } };
 }
 
 /* Tekst użytkownika trafia do ogrodzonego bloku kodu: GitHub nie interpretuje w nim Markdown,
@@ -55,13 +72,16 @@ export function blokKodu(s) {
   return `${plot}text\n${tekst}\n${plot}`;
 }
 
+/** Nazwa bez znaków Markdown, wzmianek i odwołań (# i @) — do tytułu i linii „Woda”. */
+const czystaNazwa = (nazwa) => nazwa.replace(/[`*_~[\]<>#@]/g, '').trim() || '(bez nazwy)';
+
 /** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy, id — numer wpisu w bazie.
- *  Kontakt nie jest publikowany: zostaje w bazie Okręgu (retencja jak dla adresu IP). */
+ *  Kontakt nie jest publikowany: zostaje w bazie Okręgu (retencja jak dla adresu IP).
+ *  Nazwa w treści jest w kodzie liniowym (odwrotne apostrofy usunięte, więc nie da się go zamknąć):
+ *  przy typie „inne” to tekst użytkownika, a w kodzie GitHub nie tworzy linków ani wzmianek. */
 export function issueContent(report, mapUrl, id) {
-  const lines = [
-    `**Woda:** ${report.nazwa.replace(/[`*_~[\]<>]/g, '')} (${TYPY[report.typ]})`,
-    `**Współrzędne:** ${report.lat}, ${report.lon}`,
-  ];
+  const lines = [`**Woda:** \`${czystaNazwa(report.nazwa)}\` (${TYPY[report.typ]})`];
+  if (report.lat != null && report.lon != null) lines.push(`**Współrzędne:** ${report.lat}, ${report.lon}`);
   if (report.kontakt) {
     lines.push(`**Kontakt:** podany — dostępny operatorom w bazie${id ? ` (wpis nr ${id})` : ''}`);
   }
@@ -73,5 +93,5 @@ export function issueContent(report, mapUrl, id) {
     '',
     `_Zgłoszono z formularza na mapie: ${mapUrl}_`
   );
-  return { title: `Zgłoszenie: ${report.nazwa.replace(/[`*_~[\]<>#@]/g, '')}`, body: lines.join('\n') };
+  return { title: `Zgłoszenie: ${czystaNazwa(report.nazwa)}`, body: lines.join('\n') };
 }

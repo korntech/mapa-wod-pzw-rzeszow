@@ -48,11 +48,16 @@ function describeCandidates(record) {
 }
 
 const record = findRecord();
+// Typ „inne” (brakujące łowisko albo uwaga ogólna) z założenia nie ma rekordu na mapie.
+const brakRekordu =
+  ref.typ === 'inne'
+    ? 'nie dotyczy — zgłoszenie typu „inne” (brakujące łowisko lub uwaga ogólna), bez rekordu na mapie'
+    : 'nie znaleziono rekordu o tej nazwie';
 const fill = (t) =>
   t
     .replace('{tytul}', String(issue.title || '').slice(0, 300))
     .replace('{tresc}', String(issue.body || '').slice(0, cfg.maxTresci))
-    .replace('{rekord}', record ? JSON.stringify(record, null, 1) : 'nie znaleziono rekordu o tej nazwie')
+    .replace('{rekord}', record ? JSON.stringify(record, null, 1) : brakRekordu)
     .replace('{kandydaci}', describeCandidates(record));
 
 mkdirSync(outDir, { recursive: true });

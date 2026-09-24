@@ -125,3 +125,48 @@ test('powtórka: 409 bez issue', async () => {
   assert.equal(w.body.error, 'powtorka');
   assert.equal(issues.length, 1);
 });
+
+test('zgłoszenie „inne” bez współrzędnych: rezerwacja dostaje lat/lon null, issue bez „Współrzędne”', async () => {
+  const { deps, wpisy, issues } = srodowisko();
+  const w = await obsluzZgloszenie({
+    input: { typ: 'inne', nazwa: 'Staw w Boguchwale', opis: 'Brakuje tego łowiska na mapie.', www: '' },
+    ...deps,
+  });
+  assert.equal(w.status, 200);
+  assert.deepEqual(w.body, { ok: true, numer: 1, url: 'https://github.com/x/y/issues/1' });
+  assert.equal(wpisy.length, 1);
+  assert.equal(wpisy[0].typ, 'inne');
+  assert.equal(wpisy[0].nazwa, 'Staw w Boguchwale');
+  assert.strictEqual(wpisy[0].lat, null);
+  assert.strictEqual(wpisy[0].lon, null);
+  assert.equal(wpisy[0].status, 'wyslane');
+  assert.equal(issues[0].title, 'Zgłoszenie: Staw w Boguchwale');
+  assert.match(issues[0].body, /\(inne\)/);
+  assert.doesNotMatch(issues[0].body, /Współrzędne/);
+});
+
+test('zgłoszenie „inne” bez nazwy: 400 bez wpisu i bez issue', async () => {
+  const { deps, wpisy, issues } = srodowisko();
+  const w = await obsluzZgloszenie({
+    input: { typ: 'inne', nazwa: '', opis: 'Brakuje tego łowiska na mapie.', www: '' },
+    ...deps,
+  });
+  assert.equal(w.status, 400);
+  assert.deepEqual(w.body, { ok: false, error: 'nazwa' });
+  assert.equal(wpisy.length, 0);
+  assert.equal(issues.length, 0);
+});
+
+test('zgłoszenie „inne” liczy się do tego samego limitu co pozostałe', async () => {
+  const { deps, issues } = srodowisko({ limit: 2 });
+  const statusy = [];
+  for (const i of [1, 2, 3]) {
+    const w = await obsluzZgloszenie({
+      input: { typ: 'inne', nazwa: `Miejsce ${i}`, opis: `Uwaga ogólna numer ${i} do mapy.`, www: '' },
+      ...deps,
+    });
+    statusy.push(w.status);
+  }
+  assert.deepEqual(statusy, [200, 200, 429]);
+  assert.equal(issues.length, 2);
+});

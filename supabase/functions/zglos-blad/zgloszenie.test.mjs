@@ -140,3 +140,108 @@ test('tytuł issue nie zawiera znaków markdown ani wzmianek z nazwy', () => {
   const { title } = issueContent(report, 'https://example.org/');
   assert.equal(title, 'Zgłoszenie: octocat Zalew b');
 });
+
+/* ===== Typ „inne”: brakujące łowisko albo uwaga ogólna — nazwa od użytkownika, bez współrzędnych ===== */
+
+const inne = {
+  typ: 'inne',
+  nazwa: 'Staw w Boguchwale',
+  opis: 'Brakuje tego łowiska na mapie, jest w wykazie na 2026.',
+  kontakt: '',
+  www: '',
+};
+
+test('inne: bez współrzędnych jest poprawne, lat/lon w raporcie to null', () => {
+  for (const wsp of [
+    {},
+    { lat: null, lon: null },
+    { lat: '', lon: '' },
+    { lat: undefined, lon: undefined },
+  ]) {
+    const wynik = validateReport({ ...inne, ...wsp });
+    assert.equal(wynik.ok, true, JSON.stringify(wsp));
+    assert.deepEqual(wynik.report, {
+      typ: 'inne',
+      nazwa: 'Staw w Boguchwale',
+      lat: null,
+      lon: null,
+      opis: inne.opis,
+      kontakt: '',
+    });
+  }
+});
+
+test('inne: podane współrzędne są sprawdzane i zaokrąglane; błędne → wspolrzedne', () => {
+  const ok = validateReport({ ...inne, lat: 50.0123456, lon: 22.0123456 });
+  assert.equal(ok.ok, true);
+  assert.equal(ok.report.lat, 50.012346);
+  assert.equal(ok.report.lon, 22.012346);
+  assert.deepEqual(validateReport({ ...inne, lat: 91, lon: 22 }), { ok: false, error: 'wspolrzedne' });
+  assert.deepEqual(validateReport({ ...inne, lat: 'abc', lon: 22 }), { ok: false, error: 'wspolrzedne' });
+  // Tylko jedna współrzędna to nie „brak współrzędnych”.
+  assert.deepEqual(validateReport({ ...inne, lat: 50 }), { ok: false, error: 'wspolrzedne' });
+  assert.deepEqual(validateReport({ ...inne, lat: null, lon: 22 }), { ok: false, error: 'wspolrzedne' });
+});
+
+test('inne: pusta albo jednoznakowa nazwa → nazwa; nazwa jest przycinana do jednej linii', () => {
+  assert.deepEqual(validateReport({ ...inne, nazwa: '' }), { ok: false, error: 'nazwa' });
+  assert.deepEqual(validateReport({ ...inne, nazwa: '   ' }), { ok: false, error: 'nazwa' });
+  assert.deepEqual(validateReport({ ...inne, nazwa: 'X' }), { ok: false, error: 'nazwa' });
+  assert.deepEqual(validateReport({ ...inne, nazwa: undefined }), { ok: false, error: 'nazwa' });
+  const w = validateReport({ ...inne, nazwa: '  Staw\n# nagłówek\r\n  pod   lasem ' });
+  assert.equal(w.ok, true);
+  assert.equal(w.report.nazwa, 'Staw # nagłówek pod lasem');
+  const dluga = validateReport({ ...inne, nazwa: 'x'.repeat(LIMITY.nazwaMax + 50) });
+  assert.equal(dluga.report.nazwa.length, LIMITY.nazwaMax);
+});
+
+test('zb i rzeka nadal wymagają współrzędnych', () => {
+  assert.deepEqual(validateReport({ ...poprawne, lat: null, lon: null }), {
+    ok: false,
+    error: 'wspolrzedne',
+  });
+  assert.deepEqual(validateReport({ ...poprawne, lat: '', lon: '' }), { ok: false, error: 'wspolrzedne' });
+  const { lat, lon, ...bez } = poprawne;
+  assert.deepEqual(validateReport(bez), { ok: false, error: 'wspolrzedne' });
+  assert.deepEqual(validateReport({ ...bez, typ: 'rzeka' }), { ok: false, error: 'wspolrzedne' });
+});
+
+test('inne: ścisły schemat pól i limity opisu obowiązują tak samo', () => {
+  assert.deepEqual(validateReport({ ...inne, extra: 1 }), { ok: false, error: 'schemat' });
+  assert.deepEqual(validateReport({ ...inne, www: 'x' }), { ok: false, error: 'spam' });
+  assert.deepEqual(validateReport({ ...inne, opis: 'krótko' }), { ok: false, error: 'opis' });
+});
+
+test('treść issue dla inne: tytuł z nazwą, etykieta typu „inne”, bez linii „Współrzędne”', () => {
+  const { report } = validateReport({ ...inne, kontakt: 'jan@example.com' });
+  const { title, body } = issueContent(report, 'https://example.org/mapa/', 3);
+  assert.equal(title, 'Zgłoszenie: Staw w Boguchwale');
+  assert.match(body, /^\*\*Woda:\*\* `Staw w Boguchwale` \(inne\)$/m);
+  assert.doesNotMatch(body, /Współrzędne/);
+  assert.match(body, /Kontakt:\*\* podany — dostępny operatorom w bazie \(wpis nr 3\)/);
+  assert.doesNotMatch(body, /jan@example\.com/);
+  assert.match(body, /Brakuje tego łowiska na mapie/);
+});
+
+test('treść issue dla inne ze współrzędnymi zawiera linię „Współrzędne”', () => {
+  const { report } = validateReport({ ...inne, lat: 50.1, lon: 22.1 });
+  const { body } = issueContent(report, 'https://example.org/');
+  assert.match(body, /\*\*Współrzędne:\*\* 50\.1, 22\.1/);
+});
+
+test('nazwa od użytkownika w treści issue: w kodzie liniowym, bez wzmianek, linków HTML i odwołań', () => {
+  const { report } = validateReport({ ...inne, nazwa: '@octocat `x` [link](https://zly.example) #12 <b>' });
+  const { title, body } = issueContent(report, 'https://example.org/');
+  const woda = body.split('\n')[0];
+  assert.equal(woda, '**Woda:** `octocat x link(https://zly.example) 12 b` (inne)');
+  assert.equal(title, 'Zgłoszenie: octocat x link(https://zly.example) 12 b');
+  // Odwrotne apostrofy z nazwy są usuwane, więc kod liniowy nie może zostać zamknięty.
+  assert.equal((woda.match(/`/g) || []).length, 2);
+});
+
+test('nazwa złożona wyłącznie ze znaków specjalnych nie daje pustego tytułu', () => {
+  const { report } = validateReport({ ...inne, nazwa: '@@' });
+  const { title, body } = issueContent(report, 'https://example.org/');
+  assert.equal(title, 'Zgłoszenie: (bez nazwy)');
+  assert.match(body, /`\(bez nazwy\)`/);
+});
