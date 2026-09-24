@@ -2,7 +2,7 @@
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { BASEMAPS, LINKS, SITE } from './config.js';
-import { crs, ZOOM, CENTER } from './crs.js';
+import { crs, ZOOM, CENTER, maxBounds, MAX_BOUNDS_VISCOSITY } from './crs.js';
 import { initBasemaps } from './basemaps.js';
 import { loadData, getSupabase, esc } from './data.js';
 import { waterOptions, initReportForm } from './report.js';
@@ -172,7 +172,7 @@ function buildLayers(map, data) {
   return { layers, entries };
 }
 
-function initUi(map, layers, entries) {
+function initUi(map, layers, entries, snapshotDate) {
   const filters = createFilters();
   const { active } = filters;
   const listEl = $('list');
@@ -192,7 +192,11 @@ function initUi(map, layers, entries) {
       });
       items.sort((a, b) => a.km - b.km);
     }
-    countEl.textContent = items.length + ' pozycji' + (userPos ? ' · posortowano wg odległości' : '');
+    countEl.textContent =
+      items.length +
+      ' pozycji' +
+      (userPos ? ' · posortowano wg odległości' : '') +
+      (snapshotDate ? ' · Dane: ' + snapshotDate : '');
     listEl.innerHTML = items
       .map(
         (e) =>
@@ -319,14 +323,21 @@ function initUi(map, layers, entries) {
   applyFilters();
 }
 
-function initMap(data) {
-  const map = L.map('map', { crs, minZoom: ZOOM.min, maxZoom: ZOOM.max }).setView(CENTER, ZOOM.okreg);
+function initMap(data, snapshotDate) {
+  const map = L.map('map', {
+    crs,
+    minZoom: ZOOM.min,
+    maxZoom: ZOOM.max,
+    maxBounds: maxBounds(),
+    maxBoundsViscosity: MAX_BOUNDS_VISCOSITY,
+  }).setView(CENTER, ZOOM.okreg);
   map.attributionControl.setPrefix(
     `<a href="${LINKS.leaflet}" target="_blank" rel="noopener noreferrer">Leaflet</a>`
   );
+  if (snapshotDate) map.attributionControl.addAttribution('Dane: ' + snapshotDate);
   initBasemaps(map, BASEMAPS.default.public);
   const { layers, entries } = buildLayers(map, data);
-  initUi(map, layers, entries);
+  initUi(map, layers, entries, snapshotDate);
 }
 
 /** Wysyła zgłoszenie do funkcji Supabase; odpowiedź funkcji (także błędną) zwraca bez zmian. */
@@ -377,7 +388,7 @@ async function main() {
   }
   const snapshotDate = data.meta && data.meta.snapshot ? data.meta.snapshot.slice(0, 10) : '';
   if (snapshotDate) $('stan-danych').textContent = 'Stan danych: ' + snapshotDate + ' (snapshot bazy).';
-  initMap(data);
+  initMap(data, snapshotDate);
   initReporting(data);
 }
 

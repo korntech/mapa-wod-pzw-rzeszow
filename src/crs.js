@@ -3,9 +3,18 @@
 import L from 'leaflet';
 import proj4 from 'proj4';
 import 'proj4leaflet';
-import { MAP } from './config.js';
+import { MAP, SNAPSHOT } from './config.js';
 
 const { code, proj4: definition, origin, bounds, resolutions, tileSize } = MAP.crs;
+
+/** Zasięg przesuwania mapy: obrys danych (snapshot.bbox) z marginesem map.bounds.marginDeg.
+ *  Poza nim Geoportal i tak nie ma treści dla tej mapy, a szare pole wyglądało na błąd. */
+export function maxBounds() {
+  const { lat, lon } = SNAPSHOT.bbox;
+  const m = MAP.bounds.marginDeg;
+  return L.latLngBounds([lat[0] - m, lon[0] - m], [lat[1] + m, lon[1] + m]);
+}
+export const MAX_BOUNDS_VISCOSITY = MAP.bounds.viscosity;
 
 proj4.defs(code, definition);
 
