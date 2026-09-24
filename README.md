@@ -21,7 +21,7 @@ Na mapie są:
 Mapa ma charakter **poglądowy**. Lokalizacje części zbiorników są przybliżone (oznaczone ⚠),
 a granice obwodów na rzekach wyznaczono orientacyjnie. Przed wędkowaniem obowiązuje aktualne zezwolenie
 i [oficjalny wykaz wód](https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku).
-Projekt jest niezależny i nie jest formalnie związany z PZW.
+Projekt powstał z inicjatywy autora i jest rozwijany we współpracy z Okręgiem; wiążący pozostaje oficjalny wykaz.
 
 ## Jak to działa
 
@@ -31,7 +31,7 @@ Projekt jest niezależny i nie jest formalnie związany z PZW.
 | Dane łowisk | baza Supabase (tabele `zbiorniki`, `rivers`, `granice`): publiczny odczyt, zapis tylko dla operatorów z allow-listy |
 | Snapshot | `public/data.json` — nocna kopia bazy w repozytorium; mapa wczytuje snapshot, a następnie nadpisuje go danymi z bazy (każdą warstwę osobno), więc działa także przy niedostępnej bazie |
 | Podkłady i geometrie | usługi WMTS Geoportalu (EPSG:2180) oraz przebiegi rzek i kontury zbiorników z BDOT10k (GUGiK) |
-| Panel operatora | `admin.html` — logowanie e-mail + hasło (Supabase Auth), edycja pinezek, przebiegów rzek i atrybutów |
+| Panel operatora | `admin.html` — logowanie e-mail + hasło + drugi składnik TOTP (Supabase Auth), edycja pinezek, przebiegów rzek i atrybutów; każda zmiana trafia do `historia_zmian` |
 | Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium (bez konta GitHub) |
 
 W czasie działania strona łączy się wyłącznie z Geoportalem GUGiK i własną bazą (wymusza to CSP w buildzie).
@@ -45,9 +45,13 @@ npm install
 npm run dev        # serwer deweloperski
 npm run build      # wersja produkcyjna do dist/
 npm run preview    # podgląd dist/ pod ścieżką z config.json
-npm test           # testy (walidacja zgłoszeń, formularz)
-npm run check      # składnia skryptów, walidacja snapshotu, testy (CI robi to samo, plus build)
+npm test           # testy: walidacja i obsługa zgłoszeń, limit body, rodzaje zbiorników, filtry, formularz
+npm run check      # składnia skryptów, walidacja snapshotu, testy (CI robi to samo, plus build i próbę migracji)
 ```
+
+Migracje bazy można sprawdzić lokalnie na czystym Postgresie tak jak robi to CI:
+`psql -f db/ci-supabase-stub.sql`, potem każdy plik z `supabase/migrations/` w kolejności
+(`--single-transaction`), na końcu `npm run seed-sql | psql`.
 
 Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.json`
 (alternatywnie `PZW_BASE=/` przy budowaniu).
@@ -61,8 +65,11 @@ Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.j
 | `public/data.json` | snapshot bazy (odświeżany co noc) |
 | `public/kandydaci-zbiorniki.json` | propozycje akwenów z BDOT10k dla zbiorników o lokalizacji przybliżonej (używane w panelu) |
 | `config.json` | cała konfiguracja (patrz niżej) |
-| `db/` | schemat bazy i migracje |
+| `supabase/migrations/` | schemat bazy i wszystkie zmiany, w kolejności znaczników czasu; wykonywane na produkcji przez integrację Supabase z GitHubem po scaleniu do `main` |
 | `supabase/functions/` | funkcja `zglos-blad` (zgłoszenia błędów → GitHub Issues) |
+| `supabase/config.toml` | identyfikator projektu i ustawienia funkcji |
+| `db/` | narzędzia pomocnicze: test macierzy uprawnień, atrapa środowiska Supabase dla CI |
+| `SECURITY.md` | prywatna ścieżka zgłaszania luk bezpieczeństwa |
 | `tools/snapshot/` | eksport bazy do snapshotu, walidacja snapshotu, generator SQL zasilającego bazę |
 | `tools/bdot/` | pipeline geometrii z BDOT10k — [opis](tools/bdot/README.md) |
 | `tools/qa/` | porównanie danych z oficjalnym wykazem PZW (PDF, OCR) — [opis](tools/qa/README.md) |
@@ -94,7 +101,7 @@ w `src/zbiorniki-typ.js`; korzysta z niego mapa, panel, wykaz do druku i skrypty
 | `links` | linki zewnętrzne: wykaz PZW, repozytorium, instrukcja, szablony nawigacji, nazwa funkcji zgłoszeń `report.function` i zapasowy formularz `report.issues` |
 
 Klucz `anonKey` jest z założenia jawny (trafia do przeglądarki); o bezpieczeństwie zapisu decydują reguły RLS
-w bazie (`db/schema.sql`). Przy pustej sekcji `supabase` mapa działa wyłącznie na snapshocie, a panel
+w bazie (`supabase/migrations/`). Przy pustej sekcji `supabase` mapa działa wyłącznie na snapshocie, a panel
 operatora pokazuje komunikat o braku konfiguracji.
 
 ## Baza danych i panel operatora
@@ -103,7 +110,9 @@ Pierwsze uruchomienie:
 
 1. Załóż projekt na <https://supabase.com>; z **Project Settings → API** skopiuj adres projektu i klucz
    publiczny do sekcji `supabase` w `config.json`.
-2. W **SQL Editor** uruchom [`db/schema.sql`](db/schema.sql) (tabele, allow-lista `operators`, RLS, uprawnienia).
+2. Wykonaj migracje z `supabase/migrations/` — albo przez CLI (`npx supabase link --project-ref <ref>`,
+   `npx supabase db push`), albo wklejając pliki po kolei w **SQL Editor**. Tworzą tabele, allow-listę
+   `operators`, RLS, funkcję rezerwacji zgłoszeń i zadanie retencji.
 3. Zasil bazę danymi ze snapshotu: `npm run seed-sql > seed.sql`, wynik uruchom w SQL Editor.
 4. W **Authentication** wyłącz publiczną rejestrację; konta operatorów (e-mail + hasło) zakładaj w **Authentication → Users**.
    W **Authentication → Multi-Factor** upewnij się, że **TOTP** jest włączone (domyślnie jest).
@@ -119,16 +128,35 @@ Pierwsze uruchomienie:
 operator zablokowany × odczyt, tabele wewnętrzne, zapis) — uruchom w SQL Editor na bazie testowej po podmianie
 dwóch adresów e-mail; kończy się `rollback`, więc niczego nie zmienia. Oczekiwane: same „✓”.
 
-Pliki `db/migrate-*.sql` to jednorazowe zmiany dla **istniejącej** bazy (na świeżej bazie wystarczy
-`schema.sql` + seed). Uruchamia się je raz, w kolejności dat, w SQL Editor; po uruchomieniu na bazie
-produkcyjnej plik migracji usuwa się z repozytorium (historia zostaje w git).
+### Zmiany w bazie (migracje)
 
-Zabezpieczenia w bazie (`db/schema.sql`): publiczny odczyt przez RLS, zapis wyłącznie dla potwierdzonych
+Każda zmiana schematu, reguł RLS czy funkcji SQL to nowy plik `supabase/migrations/<RRRRMMDDGGMMSS>_nazwa.sql`
+(idempotentny — `if not exists`, `create or replace`, `drop … if exists` — bez własnych `begin`/`commit`,
+bo CLI wykonuje każdy plik w jednej transakcji). Droga na produkcję:
+
+1. pull request → CI (`ci.yml`, job `migracje`) wykonuje **wszystkie** migracje na czystym Postgresie,
+   drugi raz dla sprawdzenia idempotencji, i zasila bazę snapshotem;
+2. scalenie do `main` → **integracja Supabase z GitHubem** (Project Settings → Integrations → GitHub,
+   „Deploy to production”, gałąź `main`) wykonuje na produkcji tylko migracje, których nie ma jeszcze
+   w `supabase_migrations.schema_migrations`.
+
+Migracje z historii projektu (sprzed integracji) są w tej tabeli oznaczone jako wykonane, więc nie
+uruchomią się ponownie. Ręczne wklejanie SQL do edytora produkcji nie jest już potrzebne.
+
+Zabezpieczenia w bazie (`supabase/migrations/`): publiczny odczyt przez RLS, zapis wyłącznie dla potwierdzonych
 kont z allow-listy `operators` po drugim składniku (MFA), ograniczenia CHECK na długości pól, współrzędne i kształt geometrii oraz
 tabela `historia_zmian` (kto, kiedy, stan przed i po), niedostępna z API — do odtwarzania danych po pomyłce.
 
 Panel: `…/admin.html`. Obsługę panelu opisuje [instrukcja operatora](docs/instrukcja-operatora.md).
 Zmiany zapisane w panelu są widoczne na mapie po odświeżeniu strony.
+
+### Kopia zapasowa i odtwarzanie
+
+Nocny snapshot (`public/data.json`, historia w git) jest kopią treści łowisk. Odtworzenie po pomyłce:
+`npm run seed-sql > seed.sql` (z wybranej wersji snapshotu, np. `git show <commit>:public/data.json > kopia.json`
+i `node tools/snapshot/seed-sql.mjs kopia.json`), wynik uruchom w SQL Editor — **czyści i nadpisuje wszystkie
+trzy tabele** łowisk. Pojedynczy rekord można cofnąć z `historia_zmian` (stan przed i po każdej zmianie).
+Kont operatorów i tabeli `zgloszenia` snapshot nie obejmuje — są tylko w Supabase.
 
 ## Zgłoszenia błędów z mapy
 
@@ -194,13 +222,17 @@ Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie te
 
 | Workflow | Kiedy | Co robi |
 |---|---|---|
-| `ci.yml` | push do `main`, pull request | składnia skryptów, walidacja snapshotu, testy, build |
+| `ci.yml` | push do `main`, pull request | składnia skryptów, walidacja snapshotu, testy, build; osobny job: wszystkie migracje na czystym Postgresie (dwa przebiegi) + seed |
 | `deploy.yml` | push do `main`, po udanym snapshocie, ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
 | `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie; utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
 | `healthcheck.yml` | co 6 h, ręcznie | sprawdza stronę i bazę; przy awarii zakłada issue z etykietą `awaria` i zamyka je, gdy kontrola przejdzie |
 | `triage.yml` | nowe issue `zgłoszenie`, ręcznie | klasyfikacja zgłoszenia przez model, etykiety i komentarz dla operatora |
 
 `dependabot.yml` co tydzień proponuje aktualizacje zależności npm i akcji.
+
+Gałąź `main` jest chroniona regułą (ruleset): zmiany trafiają przez pull request po zielonym CI, bez
+force-push i bez usuwania gałęzi. Scalenie do `main` uruchamia publikację strony i — przez integrację
+Supabase — migracje bazy, dlatego CI jest ostatnią bramką przed produkcją.
 
 ## Jak pomóc
 

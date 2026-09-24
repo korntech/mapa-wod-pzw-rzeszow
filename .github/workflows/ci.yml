@@ -1,6 +1,9 @@
 # Kontrola przy każdym pushu i pull requeście: składnia skryptów, walidacja
-# snapshotu danych i build produkcyjny. Job nie ma sekretów ani uprawnień zapisu,
-# więc może bezpiecznie uruchamiać kod z pull requestów z forków.
+# snapshotu danych, build produkcyjny oraz próba wszystkich migracji bazy na czystym
+# Postgresie (żeby błędna migracja zatrzymała PR, a nie produkcję — integracja
+# Supabase z GitHubem wykonuje supabase/migrations po scaleniu do main).
+# Joby nie mają sekretów ani uprawnień zapisu, więc mogą bezpiecznie uruchamiać
+# kod z pull requestów z forków.
 
 name: Kontrola kodu i danych
 
@@ -29,3 +32,48 @@ jobs:
         run: npm run check
       - name: Build (Vite)
         run: npm run build
+
+  migracje:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+        ports: ['5432:5432']
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Atrapa środowiska Supabase (role, auth.users, auth.uid/jwt)
+        run: psql -v ON_ERROR_STOP=1 -q -f db/ci-supabase-stub.sql
+      - name: Migracje w kolejności, każda w osobnej transakcji (jak Supabase CLI)
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "== $f"
+            psql -v ON_ERROR_STOP=1 -q --single-transaction -f "$f"
+          done
+      - name: Migracje są idempotentne (drugi przebieg)
+        run: |
+          for f in supabase/migrations/*.sql; do
+            psql -v ON_ERROR_STOP=1 -q --single-transaction -f "$f" > /dev/null
+          done
+      - name: Seed ze snapshotu i kontrola liczb
+        run: |
+          node tools/snapshot/seed-sql.mjs > /tmp/seed.sql
+          psql -v ON_ERROR_STOP=1 -q -f /tmp/seed.sql
+          psql -At -c "select 'zbiorniki='||(select count(*) from public.zbiorniki)||' rzeki='||(select count(*) from public.rivers)||' granice='||(select count(*) from public.granice)"
+          test "$(psql -At -c 'select count(*) from public.zbiorniki')" -ge 40

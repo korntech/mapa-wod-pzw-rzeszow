@@ -5,7 +5,7 @@
  * Sprawdza strukturę, minimalną liczbę wierszy, typy i długości pól tekstowych,
  * położenie współrzędnych w obrysie, ciągłość linii rzek i duplikaty nazw zbiorników
  * (parametry: config.json → snapshot). Limity długości odpowiadają ograniczeniom CHECK
- * w bazie (db/schema.sql), aby snapshot nie przeniósł do
+ * w bazie (supabase/migrations/), aby snapshot nie przeniósł do
  * repozytorium i na stronę danych, których baza nie powinna była przyjąć.
  *
  * Użycie: node tools/snapshot/validate.mjs [ścieżka-do-pliku]

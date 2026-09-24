@@ -8,7 +8,7 @@
 --  5. historia zmian (kto, kiedy, stan przed i po) na tabelach łowisk, niedostępna z API.
 -- Idempotentne. Uruchom w SQL Editor projektu.
 
-begin;
+-- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
 
 -- ===== 1–2. Funkcje pomocnicze =====
 create or replace function public.is_operator()
@@ -166,4 +166,3 @@ begin
   end if;
 end $$;
 
-commit;

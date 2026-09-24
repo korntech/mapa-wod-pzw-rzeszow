@@ -1,7 +1,7 @@
 -- Zgłoszenia błędów z formularza na mapie: dziennik i podstawa limitu na adres IP.
 -- Pisze i czyta tylko funkcja Supabase kluczem serwisowym; klucz publiczny nie ma dostępu.
 -- Idempotentne. Uruchom w SQL Editor projektu.
-begin;
+-- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
 
 create table if not exists public.zgloszenia (
   id bigint generated always as identity primary key,
@@ -22,4 +22,3 @@ create index if not exists zgloszenia_ip_created_at on public.zgloszenia (ip, cr
 alter table public.zgloszenia enable row level security;
 revoke all on public.zgloszenia from anon, authenticated;
 
-commit;

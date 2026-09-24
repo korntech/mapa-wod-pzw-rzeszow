@@ -2,7 +2,7 @@
 -- Idempotentna. Uruchom w SQL Editor projektu — PO wdrożeniu nowej wersji funkcji zglos-blad
 -- i panelu operatora (panel z obsługą MFA), inaczej stara funkcja zgłoszeń przestanie działać,
 -- a operatorzy bez skonfigurowanego MFA nie zapiszą zmian.
-begin;
+-- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
 
 -- ===== F01: atomowa rezerwacja limitu zgłoszeń =====
 -- Wpis w tabeli powstaje PRZED założeniem issue, w jednej transakcji z policzeniem limitów,
@@ -127,6 +127,5 @@ $$;
 revoke execute on function public.is_operator_konto() from public, anon;
 grant  execute on function public.is_operator_konto() to authenticated;
 
-commit;
 
 select status, count(*) from public.zgloszenia group by status order by status;
