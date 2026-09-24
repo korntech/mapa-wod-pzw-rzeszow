@@ -115,6 +115,10 @@ Pierwsze uruchomienie:
    TOTP). Reguły RLS wymagają sesji na poziomie `aal2` — samo hasło pozwala oglądać, ale nie zapisywać.
    Utrata telefonu: w **Authentication → Users → konto → Factors** usuń składnik, operator skonfiguruje nowy.
 
+`db/test-uprawnienia.sql` sprawdza macierz uprawnień (anon, zalogowany spoza listy, operator bez i z MFA,
+operator zablokowany × odczyt, tabele wewnętrzne, zapis) — uruchom w SQL Editor na bazie testowej po podmianie
+dwóch adresów e-mail; kończy się `rollback`, więc niczego nie zmienia. Oczekiwane: same „✓”.
+
 Pliki `db/migrate-*.sql` to jednorazowe zmiany dla **istniejącej** bazy (na świeżej bazie wystarczy
 `schema.sql` + seed). Uruchamia się je raz, w kolejności dat, w SQL Editor; po uruchomieniu na bazie
 produkcyjnej plik migracji usuwa się z repozytorium (historia zostaje w git).

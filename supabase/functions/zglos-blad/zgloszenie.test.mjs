@@ -94,6 +94,23 @@ test('opis użytkownika trafia do bloku kodu: markdown, HTML, linki i wzmianki n
   assert.doesNotMatch(pozaBlokiem, /@octocat|<script>|zly\.example/);
 });
 
+test('znaki CR, NEL, LS i PS nie zamykają bloku kodu (normalizacja końców linii)', () => {
+  for (const nl of ['\r\n', '\r', '\u0085', '\u2028', '\u2029']) {
+    const opis = `opis${nl}\`\`\`${nl}@octocat zobacz${nl}\`\`\``;
+    const wynik = blokKodu(opis);
+    const linie = wynik.split('\n');
+    assert.equal(linie[0], '````text', JSON.stringify(nl));
+    assert.equal(linie.at(-1), '````');
+    // Żadna wewnętrzna linia nie jest ogrodzeniem o długości ≥ 4 (czyli nie zamyka bloku).
+    const wewnetrzne = linie.slice(1, -1);
+    assert.ok(
+      wewnetrzne.every((l) => !/^\s{0,3}`{4,}\s*$/.test(l)),
+      JSON.stringify(wewnetrzne)
+    );
+    assert.ok(!wynik.includes('\r') && !wynik.includes('\u2028') && !wynik.includes('\u0085'));
+  }
+});
+
 test('ogrodzenie bloku kodu jest dłuższe niż odwrotne apostrofy w treści', () => {
   const s = 'a\n```\nb\n````\nc';
   const wynik = blokKodu(s);

@@ -46,10 +46,13 @@ export function validateReport(input) {
  * HTML, linków ani wzmianek @użytkownik (brak powiadomień). Ogrodzenie jest dłuższe niż
  * najdłuższy ciąg odwrotnych apostrofów w tekście, więc treść nie może go zamknąć. */
 export function blokKodu(s) {
-  const runs = s.match(/`+/g) || [];
+  // Najpierw normalizacja końców linii (CRLF, CR, NEL, LS, PS → LF), potem długość ogrodzenia:
+  // liczona na tym samym tekście, który trafia do bloku.
+  const tekst = String(s ?? '').replace(/\r\n|\r|\u0085|\u2028|\u2029/g, '\n');
+  const runs = tekst.match(/`+/g) || [];
   const dlugosc = Math.max(3, ...runs.map((r) => r.length + 1));
   const plot = '`'.repeat(dlugosc);
-  return `${plot}text\n${s.replace(/\r/g, '')}\n${plot}`;
+  return `${plot}text\n${tekst}\n${plot}`;
 }
 
 /** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy, id — numer wpisu w bazie.

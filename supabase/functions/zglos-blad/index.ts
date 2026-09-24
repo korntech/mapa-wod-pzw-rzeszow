@@ -7,6 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.116.0';
 import { LIMITY } from './zgloszenie.js';
 import { obsluzZgloszenie } from './obsluga.js';
+import { czytajBody } from './body.js';
 
 const ORIGINS = (Deno.env.get('ALLOWED_ORIGINS') || '')
   .split(',')
@@ -51,14 +52,15 @@ Deno.serve(async (req) => {
   // Wyłącznik awaryjny: sekret ZGLOSZENIA_WSTRZYMANE=1 zatrzymuje przyjmowanie zgłoszeń bez zmiany kodu.
   if (Deno.env.get('ZGLOSZENIA_WSTRZYMANE') === '1') return json(req, 503, { ok: false, error: 'wstrzymane' });
 
-  // Rozmiar treści sprawdzany przed parsowaniem: nagłówek, a potem faktyczna długość.
+  // Rozmiar treści: nagłówek, a potem odczyt strumieniowy przerywany w chwili przekroczenia progu
+  // (nadmiarowe bajty nie są wczytywane do pamięci).
   const zadeklarowane = Number(req.headers.get('content-length') || 0);
   if (zadeklarowane > LIMITY.bodyBajty) return json(req, 413, { ok: false, error: 'rozmiar' });
+  const body = await czytajBody(req.body, LIMITY.bodyBajty);
+  if (!body.ok) return json(req, 413, { ok: false, error: 'rozmiar' });
   let input: unknown;
   try {
-    const surowe = await req.text();
-    if (new TextEncoder().encode(surowe).length > LIMITY.bodyBajty) return json(req, 413, { ok: false, error: 'rozmiar' });
-    input = JSON.parse(surowe);
+    input = JSON.parse(body.text);
   } catch {
     return json(req, 400, { ok: false, error: 'json' });
   }
