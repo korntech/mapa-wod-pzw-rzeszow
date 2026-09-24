@@ -161,12 +161,16 @@ opis w ciągu doby), pole-pułapka dla botów, limit rozmiaru żądania 16 KB. A
 po 30 dniach zadaniem `pg_cron` (`zgloszenia-retencja`, codziennie 03:15 UTC; przebiegi i błędy:
 `select * from cron.job_run_details order by start_time desc`). Wyłącznik awaryjny: sekret
 `ZGLOSZENIA_WSTRZYMANE=1` w funkcji (`npx supabase secrets set …`) zatrzymuje przyjmowanie zgłoszeń bez zmiany
-kodu. Klasyfikacja AI ma osobny budżet dobowy (`tools/triage/config.json` → `budzetDobowy`); powyżej niego
-zgłoszenia zostają bez oceny modelu, ale nadal trafiają do Issues.
+kodu. Klasyfikacja AI (gdy włączona) ma osobny budżet dobowy (`tools/triage/config.json` → `budzetDobowy`);
+powyżej niego zgłoszenia zostają bez oceny modelu, ale nadal trafiają do Issues.
 
-## Wstępna klasyfikacja zgłoszeń (AI)
+## Wstępna klasyfikacja zgłoszeń (AI) — wyłączona, dostępna ręcznie
 
-Workflow `triage.yml` uruchamia się przy każdym nowym issue z etykietą `zgłoszenie`: buduje prompt
+Na etapie rozruchu zgłoszenia klasyfikuje operator ręcznie (etykiety w Issues); automatyczny
+wyzwalacz w `triage.yml` jest zakomentowany, więc treść z formularza nie uruchamia modelu i nie
+zużywa limitu Copilota. Klasyfikację można wywołać dla wybranego issue: Actions → „Triage zgłoszeń”
+→ Run workflow → numer issue (wymaga sekretu `COPILOT_PAT`). Po przywróceniu wyzwalacza `issues`
+workflow uruchamia się przy każdym nowym issue z etykietą `zgłoszenie`: buduje prompt
 z treści zgłoszenia, aktualnego rekordu z mapy i kandydatów akwenów z BDOT10k (`tools/triage/prompt.mjs`),
 pyta model przez Copilot CLI (`actions/ai-inference`) i nadaje etykiety `kategoria: …` oraz `pewność: …`
 wraz z komentarzem „co sprawdzić w panelu” (`tools/triage/apply.mjs`). Model niczego nie zmienia —
@@ -175,7 +179,7 @@ decyzję podejmuje operator. Dozwolone kategorie, etykiety, model i treść prom
 
 Wymaga sekretu `COPILOT_PAT`: fine-grained personal access token konta z dostępem do Copilota,
 uprawnienie **Copilot Requests** (Settings → Developer settings → Personal access tokens).
-Ponowna klasyfikacja: Actions → „Triage zgłoszeń” → Run workflow → numer issue.
+Bez sekretu `COPILOT_PAT` ręczne uruchomienie kończy się błędem w kroku klasyfikacji — nic więcej się nie dzieje.
 
 ## Automatyzacje (GitHub Actions)
 
