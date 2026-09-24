@@ -25,6 +25,6 @@
   },
   "komentarz": {
     "naglowek": "**Wstępna klasyfikacja (automatyczna)**",
-    "stopka": "_Klasyfikację wykonał model językowy na podstawie treści zgłoszenia i danych mapy; decyzję o zmianie podejmuje operator Okręgu w panelu ([instrukcja](https://github.com/korntech/mapa-wod-pzw-rzeszow/blob/main/docs/instrukcja-operatora.md))._"
+    "stopka": "_Klasyfikację wykonał model językowy na podstawie treści zgłoszenia i danych mapy; decyzję o zmianie podejmuje operator Okręgu w panelu ([instrukcja](https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/blob/main/docs/instrukcja-operatora.md))._"
   }
 }

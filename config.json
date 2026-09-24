@@ -1,7 +1,7 @@
 {
   "site": {
     "basePath": "/mapa-wod-pzw-rzeszow/",
-    "url": "https://korntech.github.io/mapa-wod-pzw-rzeszow/"
+    "url": "https://pzw-rzeszow.github.io/mapa-wod-pzw-rzeszow/"
   },
   "supabase": {
     "url": "https://cnmuvkymtacspfrqnhma.supabase.co",
@@ -86,12 +86,12 @@
   },
   "links": {
     "wykazPzw": "https://rzeszow.pzw.pl/strefa-wedkarza/wykaz-wod-pzw-okreg-w-rzeszowie-w-2026-roku",
-    "repo": "https://github.com/korntech/mapa-wod-pzw-rzeszow",
-    "instrukcja": "https://github.com/korntech/mapa-wod-pzw-rzeszow/blob/main/docs/instrukcja-operatora.md",
+    "repo": "https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow",
+    "instrukcja": "https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/blob/main/docs/instrukcja-operatora.md",
     "leaflet": "https://leafletjs.com",
     "report": {
       "function": "zglos-blad",
-      "issues": "https://github.com/korntech/mapa-wod-pzw-rzeszow/issues/new"
+      "issues": "https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/issues/new"
     },
     "navigation": {
       "android": "geo:{lat},{lon}?q={lat},{lon}({name})",

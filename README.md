@@ -3,7 +3,7 @@
 Interaktywna mapa łowisk Polskiego Związku Wędkarskiego Okręgu w Rzeszowie, opracowana na podstawie
 oficjalnego „Wykazu wód PZW Okręgu w Rzeszowie udostępnionych do wędkowania”.
 
-**Mapa: <https://korntech.github.io/mapa-wod-pzw-rzeszow/>**
+**Mapa: <https://pzw-rzeszow.github.io/mapa-wod-pzw-rzeszow/>**
 
 Na mapie są:
 
@@ -146,9 +146,9 @@ z uprawnieniem **Issues: Read and write**, sekrety i deploy przez CLI Supabase:
 ```bash
 npx supabase login
 npx supabase secrets set --project-ref <ref> GITHUB_TOKEN=github_pat_… \
-  GITHUB_REPO=korntech/mapa-wod-pzw-rzeszow \
-  MAP_URL=https://korntech.github.io/mapa-wod-pzw-rzeszow/ \
-  ALLOWED_ORIGINS=https://korntech.github.io
+  GITHUB_REPO=pzw-rzeszow/mapa-wod-pzw-rzeszow \
+  MAP_URL=https://pzw-rzeszow.github.io/mapa-wod-pzw-rzeszow/ \
+  ALLOWED_ORIGINS=https://pzw-rzeszow.github.io
 npx supabase functions deploy zglos-blad --project-ref <ref>
 ```
 
@@ -200,7 +200,7 @@ Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie te
 
 ## Jak pomóc
 
-Błędy i propozycje: [Issues](https://github.com/korntech/mapa-wod-pzw-rzeszow/issues) albo pull request.
+Błędy i propozycje: [Issues](https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/issues) albo pull request.
 Danych merytorycznych (zasady, powierzchnie, granice) nie zmieniamy bez weryfikacji z oficjalnym wykazem PZW.
 
 Znane ograniczenia danych (szczegóły w Issues):
