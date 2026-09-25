@@ -22,6 +22,8 @@ claude-outputs/
 # Wyniki narzędzi (tools/bdot, tools/qa) i katalogi robocze
 tools/bdot/work/
 tools/qa/run/
+test-results/
+playwright-report/
 *.log
 
 # Pliki robocze CLI Supabase

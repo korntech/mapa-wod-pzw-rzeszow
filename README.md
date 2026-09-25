@@ -72,7 +72,20 @@ npm run build      # wersja produkcyjna do dist/
 npm run preview    # podgląd dist/ pod ścieżką z config.json
 npm test           # testy: walidacja i obsługa zgłoszeń, limit body, rodzaje zbiorników, filtry, formularz, reguły service workera
 npm run check      # składnia skryptów, walidacja snapshotu, testy (CI robi to samo, plus build i próbę migracji)
+npm run e2e:przegladarki  # jednorazowo: Chromium, Firefox, WebKit dla Playwrighta
+npm run e2e        # testy E2E na żywej stronie w 8 urządzeniach (inny adres: E2E_URL=https://… npm run e2e)
+npm run e2e:raport # raport HTML ostatniego przebiegu (z CI: artefakt „raport-e2e”)
 ```
+
+**Testy E2E** (`tests/e2e/`, Playwright) otwierają stronę tak jak wędkarze: komputer (Chrome, Firefox,
+Safari), iPhone 15 i SE, iPad (WebKit — silnik każdej przeglądarki na iOS), Pixel 7 i Galaxy S9+ (Chrome).
+Sprawdzają: dane z bazy i zapas ze snapshotu, podkład przez cache kafli, zoom i przesuwanie, układ
+na małym ekranie, wyszukiwarkę (bez polskich znaków), filtry i „Wyczyść”, popup z nawigacją
+(Android → `geo:`, reszta → Apple Maps), „Najbliżej mnie” (pozycja symulowana), formularz zgłoszeń
+(funkcja **podmieniona** — testy nic nie wysyłają; service worker wyłączony, bo w WebKit omija podmianę),
+awarię podkładu i cache kafli, wolne łącze 3G i powrót bez sieci (dwa ostatnie tylko w Chromium —
+ograniczenie Playwrighta). Ręcznie trzeba sprawdzić przeglądarki w aplikacjach (Facebook, Messenger),
+Samsung Internet i tryb offline na iPhonie.
 
 Migracje bazy można sprawdzić lokalnie na czystym Postgresie tak jak robi to CI:
 `psql -f db/ci-supabase-stub.sql`, potem każdy plik z `supabase/migrations/` w kolejności
@@ -295,6 +308,7 @@ Copilot CLI do konkretnej wersji. Publikacja (`deploy.yml`) buduje dokładnie te
 | `deploy.yml` | push do `main` (także commit snapshotu), ręcznie | build i publikacja `dist/` na GitHub Pages (Settings → Pages → Source: *GitHub Actions*) |
 | `snapshot.yml` | co noc 03:15 UTC, ręcznie | eksport bazy do `public/data.json` i commit przy zmianie, wypychany kluczem wdrożeniowym (sekret `SNAPSHOT_DEPLOY_KEY`, klucz publiczny w Deploy keys z prawem zapisu; „Deploy keys” w liście obejść reguły `main`); utrzymuje projekt Supabase aktywny. Gdy baza zwraca mniej danych niż snapshot albo dane spoza limitów, job kończy się błędem i niczego nie nadpisuje |
 | `healthcheck.yml` | co 10 min, ręcznie | sprawdza stronę, snapshot, bazę i funkcję zgłoszeń (2 próby); **alarm** = issue `awaria` przypisane do opiekuna (e-mail/push z GitHuba) po 3 kolejnych nieudanych kontrolach (≈30 min), zamykane po przywróceniu z czasem trwania awarii; progi w `config.json` → `healthcheck` |
+| `e2e.yml` | po każdej publikacji, co noc 03:30 UTC, ręcznie | testy E2E (Playwright) na żywej stronie w 8 urządzeniach; raport HTML jako artefakt |
 | `triage.yml` | nowe issue `zgłoszenie`, ręcznie | klasyfikacja zgłoszenia przez model, etykiety i komentarz dla operatora |
 
 `dependabot.yml` co tydzień proponuje aktualizacje zależności npm i akcji.

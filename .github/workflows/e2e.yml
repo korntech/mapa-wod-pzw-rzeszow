@@ -1,0 +1,51 @@
+# Testy E2E mapy publicznej (tests/e2e/, Playwright) na ŻYWEJ stronie w 8 urządzeniach:
+# komputery (Chrome, Firefox, Safari), iPhone 15 / SE, iPad (WebKit), Pixel 7 i Galaxy S9+ (Chrome).
+# Uruchamiane po każdej publikacji strony i co noc (wykrywa też zmiany po stronie Geoportalu,
+# cache kafli i bazy). Zgłoszenia z formularza są w testach podmienione — nic nie trafia do bazy
+# ani do issue. Raport HTML (ślady, zrzuty ekranu nieudanych testów) jest artefaktem przebiegu.
+
+name: Testy E2E (urządzenia)
+
+on:
+  workflow_run:
+    workflows: ['Publikacja na GitHub Pages']
+    types: [completed]
+  schedule:
+    - cron: '30 3 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Przeglądarki (Chromium, Firefox, WebKit) z zależnościami systemowymi
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Chwila na odświeżenie CDN GitHub Pages po publikacji
+        if: github.event_name == 'workflow_run'
+        run: sleep 60
+      - name: Testy
+        run: npm run e2e
+      - name: Raport
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: raport-e2e
+          path: playwright-report/
+          retention-days: 14
