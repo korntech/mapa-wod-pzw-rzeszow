@@ -11,6 +11,10 @@
     "export": "node tools/snapshot/export.mjs",
     "validate": "node tools/snapshot/validate.mjs",
     "seed-sql": "node tools/snapshot/seed-sql.mjs",
+    "kafle:login": "wrangler -c cloudflare/kafle/wrangler.toml login",
+    "kafle:bucket": "wrangler -c cloudflare/kafle/wrangler.toml r2 bucket create pzw-kafle",
+    "kafle:deploy": "wrangler -c cloudflare/kafle/wrangler.toml deploy",
+    "kafle:tail": "wrangler -c cloudflare/kafle/wrangler.toml tail",
     "test": "node --test",
     "check": "node --check vite.config.js && for f in tools/snapshot/*.mjs tools/triage/*.mjs cloudflare/kafle/*.js; do node --check \"$f\" || exit 1; done && npm run validate && npm test"
   },
@@ -23,7 +27,8 @@
   },
   "devDependencies": {
     "jsdom": "^30.1.0",
-    "vite": "^8.3.0"
+    "vite": "^8.3.0",
+    "wrangler": "4.140.0"
   },
   "engines": {
     "node": ">=20"

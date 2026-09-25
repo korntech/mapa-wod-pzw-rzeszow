@@ -197,13 +197,14 @@ go z Geoportalu (z ponowieniami), zapisuje i oddaje. Cache buduje się sam z ruc
 `ALLOWED_ORIGINS`, więc nie jest otwartym proxy. Buforowanie danych PZGiK jest dozwolone
 (w odróżnieniu od kafli OSM); źródło pozostaje w atrybucji mapy.
 
-Wdrożenie (raz, konto Cloudflare Okręgu):
+Wdrożenie (raz; Wrangler — CLI Cloudflare — jest w `devDependencies`, skrypty wskazują
+`cloudflare/kafle/wrangler.toml`, więc uruchamia się je z katalogu głównego):
 
 ```bash
-cd cloudflare/kafle
-npx wrangler login                       # logowanie w przeglądarce
-npx wrangler r2 bucket create pzw-kafle
-npx wrangler deploy                      # wypisze adres, np. https://pzw-kafle.<konto>.workers.dev
+npm run kafle:login    # logowanie w przeglądarce (token trafia do ~/.wrangler, nie do repo)
+npm run kafle:bucket   # tworzy bucket R2 `pzw-kafle`
+npm run kafle:deploy   # wgrywa Workera; wypisze adres, np. https://pzw-kafle.<konto>.workers.dev
+npm run kafle:tail     # (opcjonalnie) podgląd logów Workera na żywo
 ```
 
 Potem w `config.json` → `basemaps.kafleUrl` = `https://pzw-kafle.<konto>.workers.dev/wss/service/`
