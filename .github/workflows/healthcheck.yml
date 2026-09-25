@@ -1,5 +1,5 @@
-# Kontrola dostępności: strona (GitHub Pages), snapshot danych, baza (Supabase REST)
-# i funkcja zgłoszeń — co 10 minut (config.json → healthcheck.coMinut; harmonogram GitHuba
+# Kontrola dostępności: strona (GitHub Pages), snapshot danych, baza (Supabase REST),
+# funkcja zgłoszeń i — gdy skonfigurowany — własny cache kafli (Cloudflare Worker) — co 10 minut (config.json → healthcheck.coMinut; harmonogram GitHuba
 # bywa opóźniony o kilka minut). Kontrola kończy się błędem przy każdej awarii, a ALARM
 # (issue „awaria” przypisane do opiekuna → e-mail/push z GitHuba) powstaje dopiero po
 # `alarmPoNieudanych` kolejnych nieudanych przebiegach (domyślnie 3 ≈ 30 min), żeby chwilowe
@@ -62,13 +62,19 @@ jobs:
           snap=$(probe "$SNAP")
           db=$(probe "$DB_URL/rest/v1/$TABLE?select=id&limit=1" -H "apikey: $DB_KEY" -H "Authorization: Bearer $DB_KEY")
           fn=$(probe "$FN" -X GET)   # oczekiwane 405 (funkcja żyje, GET niedozwolony); 503 = wstrzymane, ale żyje
-          echo "strona: $site, snapshot: $snap, baza: $db, funkcja zgłoszeń: $fn"
+          KAFLE="$(jq -r '.basemaps.kafleUrl // ""' config.json)"
+          kafle=200
+          if [ -n "$KAFLE" ]; then
+            kafle=$(probe "${KAFLE%/wss/service/}/zdrowie")   # własny cache kafli (Cloudflare Worker)
+          fi
+          echo "strona: $site, snapshot: $snap, baza: $db, funkcja zgłoszeń: $fn, cache kafli: $kafle"
 
           report=""
           [ "$site" = "200" ] || report="$report- Strona (GitHub Pages): HTTP $site"$'\n'
           [ "$snap" = "200" ] || report="$report- Snapshot danych ($(basename "$SNAP")): HTTP $snap"$'\n'
           [ "$db" = "200" ]   || report="$report- Baza (Supabase REST): HTTP $db (5xx lub 0 może oznaczać zapauzowany projekt — wznów go w panelu bazy)"$'\n'
           case "$fn" in 405|503|401) ;; *) report="$report- Funkcja zgłoszeń: HTTP $fn (oczekiwane 405)"$'\n';; esac
+          [ "$kafle" = "200" ] || report="$report- Cache kafli (Cloudflare Worker): HTTP $kafle — mapa przełączy się na kafle prosto z Geoportalu dopiero po zmianie kafleUrl w config.json"$'\n'
 
           {
             echo "failed=$([ -n "$report" ] && echo true || echo false)"

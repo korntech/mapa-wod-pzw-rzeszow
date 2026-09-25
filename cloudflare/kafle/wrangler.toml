@@ -1,0 +1,20 @@
+# Cache kafli Geoportalu — Cloudflare Worker + R2 (plan bezpłatny: 100 tys. żądań/dobę,
+# R2 10 GB i 10 mln odczytów/mies. — kilkukrotnie powyżej potrzeb Okręgu).
+# Wdrożenie: npx wrangler login && npx wrangler r2 bucket create pzw-kafle && npx wrangler deploy
+# (z katalogu cloudflare/kafle). Adres Workera wpisz do config.json → basemaps.kafleUrl.
+name = "pzw-kafle"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[[r2_buckets]]
+binding = "KAFLE"
+bucket_name = "pzw-kafle"
+
+[vars]
+GEOPORTAL = "https://mapy.geoportal.gov.pl"
+# Źródła, którym Worker odpowiada (Origin/Referer); puste = każdemu (na czas testów).
+ALLOWED_ORIGINS = "https://pzw-rzeszow.github.io,https://mapa.rzeszow.pzw.pl"
+TTL_SEC = "2592000"
+
+[observability]
+enabled = true

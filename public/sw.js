@@ -20,7 +20,7 @@
 const WERSJA = 'v1';
 const CACHE_KAFLE = 'kafle-' + WERSJA;
 const CACHE_APP = 'app-' + WERSJA;
-const KAFLE_HOST = 'mapy.geoportal.gov.pl';
+/* Kafle rozpoznawane po parametrze REQUEST=GetTile (Geoportal albo nasz cache kafli — inny host). */
 const KAFLE_LIMIT = 1500;
 const KAFLE_WAZNOSC_MS = 30 * 24 * 60 * 60 * 1000;
 const NAGLOWEK_ZAPISANO = 'x-sw-zapisano';
@@ -41,9 +41,7 @@ function dobierzStrategie(url, scope, mode) {
   } catch {
     return null;
   }
-  if (u.hostname === KAFLE_HOST) {
-    return /(^|[?&])REQUEST=GetTile(&|$)/i.test(u.search) ? 'kafel' : null;
-  }
+  if (/(^|[?&])REQUEST=GetTile(&|$)/i.test(u.search)) return 'kafel';
   if (!url.startsWith(scope)) return null;
   const sciezka = u.pathname.slice(new URL(scope).pathname.length);
   if (sciezka === 'data.json') return 'dane';

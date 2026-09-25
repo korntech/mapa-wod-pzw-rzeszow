@@ -31,6 +31,7 @@ Projekt powstał z inicjatywy autora i jest rozwijany we współpracy z Okręgie
 | Dane łowisk | baza Supabase (tabele `zbiorniki`, `rivers`, `granice`): publiczny odczyt, zapis tylko dla operatorów z allow-listy |
 | Snapshot | `public/data.json` — nocna kopia bazy w repozytorium; mapa wczytuje snapshot, a następnie nadpisuje go danymi z bazy (każdą warstwę osobno), więc działa także przy niedostępnej bazie |
 | Podkłady i geometrie | usługi WMTS Geoportalu (EPSG:2180) oraz przebiegi rzek i kontury zbiorników z BDOT10k (GUGiK) |
+| Cache kafli | Cloudflare Worker + R2 (`cloudflare/kafle/`) między przeglądarką a Geoportalem: kafel raz pobrany jest oddawany z Warszawy w ~50 ms i przeżywa awarie Geoportalu; włączany polem `basemaps.kafleUrl` w `config.json` |
 | Pamięć podręczna | service worker `public/sw.js`: kafle Geoportalu trzymane w przeglądarce (do 1500 kafli, 30 dni, najstarsze usuwane), `data.json` i strony „najpierw sieć, potem kopia”, skrypty Vite „najpierw kopia”; obejrzany fragment mapy wyświetla się także bez zasięgu — patrz niżej |
 | Panel operatora | `admin.html` — logowanie e-mail + hasło + drugi składnik TOTP (Supabase Auth), edycja pinezek, przebiegów rzek i atrybutów; każda zmiana trafia do `historia_zmian` |
 | Zgłoszenia błędów | formularz na mapie → funkcja Supabase `zglos-blad` → issue w tym repozytorium (bez konta GitHub) |
@@ -93,6 +94,7 @@ Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.j
 | `supabase/migrations/` | schemat bazy i wszystkie zmiany, w kolejności znaczników czasu; wykonywane na produkcji przez integrację Supabase z GitHubem po scaleniu do `main` |
 | `supabase/functions/` | funkcja `zglos-blad` (zgłoszenia błędów → GitHub Issues) |
 | `supabase/config.toml` | identyfikator projektu i ustawienia funkcji |
+| `cloudflare/kafle/` | Worker cache kafli Geoportalu (`worker.js`, testy, `wrangler.toml`) — [opis niżej](#cache-kafli-geoportalu) |
 | `db/` | narzędzia pomocnicze: test macierzy uprawnień, atrapa środowiska Supabase dla CI |
 | `SECURITY.md` | prywatna ścieżka zgłaszania luk bezpieczeństwa |
 | `tools/snapshot/` | eksport bazy do snapshotu, walidacja snapshotu, generator SQL zasilającego bazę |
@@ -182,6 +184,32 @@ Nocny snapshot (`public/data.json`, historia w git) jest kopią treści łowisk.
 i `node tools/snapshot/seed-sql.mjs kopia.json`), wynik uruchom w SQL Editor — **czyści i nadpisuje wszystkie
 trzy tabele** łowisk. Pojedynczy rekord można cofnąć z `historia_zmian` (stan przed i po każdej zmianie).
 Kont operatorów i tabeli `zgloszenia` snapshot nie obejmuje — są tylko w Supabase.
+
+## Cache kafli Geoportalu
+
+Geoportal GUGiK oddaje kafle w 0,4–2 s i miewa „złe minuty”, w których losowe żądania kończą się
+HTTP 500 (wtedy pola mapy zostają szare mimo ponowień). `cloudflare/kafle/worker.js` to własna
+warstwa pośrednia na Cloudflare (plan bezpłatny: 100 tys. żądań/dobę, R2 10 GB — kilkukrotnie
+powyżej ruchu Okręgu): przeglądarka pyta Workera **tym samym adresem WMTS** co Geoportal
+(zmienia się tylko host), Worker oddaje kafel z pamięci brzegowej albo z R2, a przy braku pobiera
+go z Geoportalu (z ponowieniami), zapisuje i oddaje. Cache buduje się sam z ruchu; kafel żyje
+30 dni. Worker przyjmuje tylko `GetTile` dla trzech usług z listy i tylko ze stron z
+`ALLOWED_ORIGINS`, więc nie jest otwartym proxy. Buforowanie danych PZGiK jest dozwolone
+(w odróżnieniu od kafli OSM); źródło pozostaje w atrybucji mapy.
+
+Wdrożenie (raz, konto Cloudflare Okręgu):
+
+```bash
+cd cloudflare/kafle
+npx wrangler login                       # logowanie w przeglądarce
+npx wrangler r2 bucket create pzw-kafle
+npx wrangler deploy                      # wypisze adres, np. https://pzw-kafle.<konto>.workers.dev
+```
+
+Potem w `config.json` → `basemaps.kafleUrl` = `https://pzw-kafle.<konto>.workers.dev/wss/service/`
+(z ukośnikiem), build i publikacja. Puste pole = kafle prosto z Geoportalu (stan awaryjny, bez cache).
+Healthcheck sprawdza `<worker>/zdrowie`; nagłówek `X-Kafle: edge|r2|origin` w odpowiedzi mówi,
+skąd przyszedł kafel. Testy: `node --test cloudflare/kafle/` (w `npm test`).
 
 ## Zgłoszenia błędów z mapy
 

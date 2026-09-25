@@ -3,7 +3,10 @@ import L from 'leaflet';
 import { BASEMAPS } from './config.js';
 import { CRS_CODE, TILE_SIZE, ZOOM } from './crs.js';
 
-const { serviceUrl, attribution, layers, fallbackAfterErrors, fallbackNotice } = BASEMAPS;
+const { attribution, layers, fallbackAfterErrors, fallbackNotice } = BASEMAPS;
+/** Źródło kafli: własny cache (Cloudflare Worker + R2, cloudflare/kafle/), gdy skonfigurowany,
+ *  inaczej Geoportal bezpośrednio. Adresy mają tę samą strukturę, więc reszta kodu tego nie widzi. */
+const serviceUrl = BASEMAPS.kafleUrl || BASEMAPS.serviceUrl;
 
 export const ATTRIBUTION = `<a href="${attribution.url}" target="_blank" rel="noopener noreferrer">${attribution.text}</a>`;
 

@@ -109,6 +109,8 @@
   },
   "basemaps": {
     "serviceUrl": "https://mapy.geoportal.gov.pl/wss/service/",
+    "kafleUrl": "",
+    "_kafleUrl": "Adres cache kafli (Cloudflare Worker, cloudflare/kafle/), np. https://pzw-kafle.<konto>.workers.dev/wss/service/ . Pusty = kafle prosto z Geoportalu (serviceUrl). Struktura adresu i parametry są identyczne, więc zmiana dotyczy tylko tego pola.",
     "attribution": {
       "text": "Podkład i geometrie: GUGiK · BDOT10k",
       "url": "https://www.geoportal.gov.pl/"

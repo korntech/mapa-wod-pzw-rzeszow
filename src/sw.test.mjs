@@ -36,7 +36,15 @@ test('kafle Geoportalu: tylko GetTile, niezależnie od usługi', () => {
     null,
     'GetCapabilities nie jest kaflem'
   );
-  assert.equal(dobierzStrategie('https://inny.host.pl/x?REQUEST=GetTile', scope), null, 'obcy host');
+  assert.equal(
+    dobierzStrategie(
+      'https://pzw-kafle.example.workers.dev/wss/service/WMTS/guest/wmts/G2_MOBILE_500?SERVICE=WMTS&REQUEST=GetTile&TILEROW=1&TILECOL=2',
+      scope
+    ),
+    'kafel',
+    'własny cache kafli (inny host) — też kafel'
+  );
+  assert.equal(dobierzStrategie('https://inny.host.pl/x?a=1', scope), null, 'obcy host bez GetTile');
 });
 
 test('pliki strony: data.json, assets, html; reszta bez udziału SW', () => {
