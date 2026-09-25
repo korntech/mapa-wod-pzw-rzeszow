@@ -4,8 +4,10 @@
 import { createClient } from '@supabase/supabase-js';
 import { SUPABASE, SNAPSHOT } from './config.js';
 import { rodzajZbiornika, noKillZOpisu } from './zbiorniki-typ.js';
+import { polaczDane } from './scalanie.js';
 
-const COLLECTIONS = ['zb', 'rivers', 'granice'];
+export { polaczDane };
+
 let client = null;
 
 /** Współdzielony klient Supabase; null, gdy konfiguracja jest pusta. */
@@ -42,18 +44,20 @@ const mapRiver = (r) => ({
 });
 const mapGranica = (g) => ({ n: text(g.n), p: [g.lat, g.lon], d: text(g.d) });
 
-/** Kolekcje odczytane z bazy; brak klucza oznacza nieudany odczyt tej kolekcji. */
-export async function loadFromSupabase() {
+/** Kolekcje odczytane z bazy; brak klucza oznacza nieudany odczyt tej kolekcji.
+ *  Odczyt przerywany po timeoutMs — słaby zasięg nie może blokować mapy. */
+export async function loadFromSupabase({ timeoutMs = 8000 } = {}) {
   const sb = getSupabase();
   if (!sb) return {};
   const { tables } = SUPABASE;
+  const signal = AbortSignal.timeout(timeoutMs);
   try {
     const [zb, rivers, granice] = await Promise.all([
       // Wszystkie kolumny: mapowanie wyprowadza k/nk z opisu t, gdy migracja rodzaju zbiornika
       // nie została jeszcze uruchomiona (zamiast błędu 400 i cofnięcia do snapshotu).
-      sb.from(tables.zbiorniki).select('*').order('n'),
-      sb.from(tables.rivers).select('n,c,o,d,r,pts').order('n'),
-      sb.from(tables.granice).select('n,lat,lon,d').order('n'),
+      sb.from(tables.zbiorniki).select('*').order('n').abortSignal(signal),
+      sb.from(tables.rivers).select('n,c,o,d,r,pts').order('n').abortSignal(signal),
+      sb.from(tables.granice).select('n,lat,lon,d').order('n').abortSignal(signal),
     ]);
     const out = {};
     if (!zb.error && zb.data) out.zb = zb.data.map(mapZbiornik);
@@ -74,12 +78,8 @@ export async function loadSnapshot() {
 
 /** Dane do wyświetlenia: snapshot nadpisany kolekcjami odczytanymi z bazy. */
 export async function loadData() {
-  const data = await loadSnapshot();
-  const live = await loadFromSupabase();
-  for (const key of COLLECTIONS) {
-    if (live[key] && live[key].length) data[key] = live[key];
-  }
-  return data;
+  const [snapshot, live] = await Promise.all([loadSnapshot(), loadFromSupabase()]);
+  return polaczDane(snapshot, live).data;
 }
 
 /** Klucz, pod którym klient Supabase trzyma sesję w localStorage. */

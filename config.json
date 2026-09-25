@@ -163,10 +163,12 @@
       "function": "zglos-blad",
       "issues": "https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/issues/new"
     },
-    "navigation": {
-      "android": "geo:{lat},{lon}?q={lat},{lon}({name})",
-      "default": "https://maps.apple.com/?daddr={lat},{lon}&q={name}"
-    }
+    "navigation": [
+      { "id": "google", "nazwa": "Google Maps", "url": "https://www.google.com/maps/dir/?api=1&destination={lat},{lon}" },
+      { "id": "apple", "nazwa": "Apple Maps", "url": "https://maps.apple.com/?daddr={lat},{lon}&q={name}" },
+      { "id": "waze", "nazwa": "Waze", "url": "https://waze.com/ul?ll={lat},{lon}&navigate=yes" },
+      { "id": "geo", "nazwa": "Inna aplikacja", "url": "geo:{lat},{lon}?q={lat},{lon}({name})", "tylkoAndroid": true }
+    ]
   },
   "healthcheck": {
     "coMinut": 10,

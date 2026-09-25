@@ -145,6 +145,6 @@ export function initBasemaps(map, defaultId) {
   primary.addTo(map);
   if (fallback) withFallback(map, primary, fallback, () => showNotice(map, fallbackNotice));
 
-  L.control.layers(control, null, { position: 'topright', collapsed: !L.Browser.mobile }).addTo(map);
+  L.control.layers(control, null, { position: 'topright', collapsed: true }).addTo(map);
   return byId;
 }

@@ -11,8 +11,10 @@ Na mapie są:
 - **odcinki rzek** — wody nizinne oraz kraina pstrąga i lipienia, z opisem granic obwodów i zasadami,
 - **punkty granic obwodów** i punkty orientacyjne,
 - wyszukiwarka (działa też bez polskich znaków), filtry warstw, a pod „Więcej filtrów” rodzaj zbiornika
-  (zaporowe / wyrobiska pożwirowe / stawy / inne), „tylko NO-KILL” i obwód rybacki; lista boczna,
-  „Najbliżej mnie” (sortowanie wg odległości) i „Nawiguj” (aplikacja nawigacyjna telefonu),
+  (zaporowe / wyrobiska pożwirowe / stawy / inne), „tylko NO-KILL” i obwód rybacki; lista boczna
+  (na telefonie wysuwany panel nad mapą na cały ekran), legenda symboli,
+  „Najbliżej mnie” (bieżące położenie, sortowanie wg odległości), „Nawiguj” (Google Maps / Apple Maps /
+  Waze, wybór zapamiętany) i „Udostępnij” (link do łowiska: `…/#w=<id>`),
 - trzy podkłady GUGiK: mapa ogólna, mapa topograficzna, ortofotomapa,
 - **wykaz do druku** (`wykaz.html`) — tabele zbiorników, rzek i granic ze współrzędnymi; „Pobierz PDF” zapisuje A4.
 

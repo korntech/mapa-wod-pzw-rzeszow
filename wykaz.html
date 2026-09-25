@@ -30,7 +30,20 @@ td.coord{white-space:nowrap;font-variant-numeric:tabular-nums}
 td.flag{text-align:center;font-weight:600;color:#b26a00}
 .note{margin-top:22px;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;font-size:12px}
 .source{margin-top:12px;font-size:11.5px;color:#555}
-@media(max-width:720px){.page{margin:0;padding:12px}header h1{font-size:14px}td,th{padding:3px 4px}}
+@media screen and (max-width:720px){
+ .page{margin:0;padding:12px}
+ header h1{font-size:14px}
+ table,tbody,tr,td{display:block;width:100%}
+ thead{display:none}
+ tr{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;padding:8px 10px;background:#fff}
+ td{border:none;padding:3px 0;white-space:normal;text-align:left;overflow-wrap:anywhere;font-size:12.5px}
+ td.num,td.coord,td.name{white-space:normal;text-align:left}
+ td::before{content:attr(data-label);display:block;font-size:10.5px;color:#667;font-weight:400}
+ td:first-child{display:none}
+ td.name{font-size:15px;color:var(--dark)}
+ td.name::before{display:none}
+ td.flag{text-align:left}
+}
 @media print{
  @page{size:A4;margin:12mm 11mm}
  body{background:#fff;font-size:10pt}

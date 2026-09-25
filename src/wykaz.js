@@ -49,6 +49,18 @@ function graniceRows(list) {
     .join('');
 }
 
+/** Nazwa kolumny przy każdej komórce — na telefonie wiersze tabel są kartami z opisanymi polami. */
+function etykietyKolumn() {
+  document.querySelectorAll('table').forEach((tabela) => {
+    const naglowki = [...tabela.querySelectorAll('thead th')].map((th) => th.textContent);
+    tabela.querySelectorAll('tbody tr').forEach((tr) => {
+      [...tr.children].forEach((td, i) => {
+        td.dataset.label = naglowki[i] || '';
+      });
+    });
+  });
+}
+
 function render(data) {
   const zb = [...data.zb].sort(byName);
   const niz = data.rivers.filter((r) => r.c !== 'gor').sort(byName);
@@ -59,6 +71,8 @@ function render(data) {
   $('niz-body').innerHTML = riverRows(niz);
   $('gor-body').innerHTML = riverRows(gor);
   $('gr-body').innerHTML = graniceRows(granice);
+
+  etykietyKolumn();
 
   $('zb-count').textContent = zb.length;
   $('niz-count').textContent = niz.length;

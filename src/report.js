@@ -45,7 +45,8 @@ const Z_LINKIEM_ZAPASOWYM = new Set(['github', 'baza', 'siec']);
 /**
  * Podpina formularz zgłoszeń (#reportmodal). `send(report)` zwraca odpowiedź funkcji
  * ({ ok, numer, url } albo { ok: false, error }); `issuesUrl` to zapasowy formularz na stronie projektu.
- * Zwraca { open(key) } do otwierania modalu z wybraną wodą (klucz z listy albo „inne”).
+ * Zwraca { open(key), ustawWody(lista) }: otwarcie modalu z wybraną wodą (klucz z listy albo „inne”)
+ * i podmianę listy wód po odświeżeniu danych.
  */
 export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   const modal = document.getElementById('reportmodal');
@@ -55,17 +56,23 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
   const nazwaPole = document.getElementById('rep-inne');
   const button = form.querySelector('button[type=submit]');
   const status = form.querySelector('.status');
-  const byKey = Object.fromEntries(options.map((o) => [o.key, o]));
+  let byKey = {};
 
-  for (const [typ, label] of [
-    ['zb', 'Zbiorniki'],
-    ['rzeka', 'Rzeki'],
-  ]) {
-    const group = document.createElement('optgroup');
-    group.label = label;
-    options.filter((o) => o.typ === typ).forEach((o) => group.appendChild(new Option(o.nazwa, o.key)));
-    select.appendChild(group);
+  /** Lista wód w formularzu (grupy „Zbiorniki” i „Rzeki”); wywoływana ponownie po odświeżeniu danych. */
+  function ustawWody(lista) {
+    byKey = Object.fromEntries(lista.map((o) => [o.key, o]));
+    select.querySelectorAll('optgroup').forEach((g) => g.remove());
+    for (const [typ, label] of [
+      ['zb', 'Zbiorniki'],
+      ['rzeka', 'Rzeki'],
+    ]) {
+      const group = document.createElement('optgroup');
+      group.label = label;
+      lista.filter((o) => o.typ === typ).forEach((o) => group.appendChild(new Option(o.nazwa, o.key)));
+      select.appendChild(group);
+    }
   }
+  ustawWody(options);
 
   /* Pole „Czego dotyczy zgłoszenie” tylko przy „Inne”; dla wody z listy nazwa i położenie idą z danych. */
   function pokazNazwe() {
@@ -147,5 +154,5 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
     if (ev.key === 'Escape') close();
   });
 
-  return { open, close };
+  return { open, close, ustawWody };
 }

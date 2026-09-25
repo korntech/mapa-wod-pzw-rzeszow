@@ -27,15 +27,17 @@ test.describe('lokalizacja zablokowana', () => {
   // Bez uprawnienia: Chromium odmawia od razu; WebKit i Firefox czekałyby na okno zgody.
   test.skip(({ browserName }) => browserName !== 'chromium', 'odmowa bez okna zgody tylko w Chromium');
 
-  test('pokazuje komunikat i nie psuje listy', async ({ page }) => {
+  test('pokazuje komunikat na stronie (bez okna alert) i nie psuje listy', async ({ page }) => {
     await otworzMape(page);
-    const komunikat = new Promise((res) => page.once('dialog', (d) => {
-        res(d.message());
-        d.dismiss();
-      }));
+    let okno = false;
+    page.on('dialog', (d) => {
+      okno = true;
+      d.dismiss();
+    });
     await page.locator('#locbtn').click();
-    expect(await komunikat).toContain('Nie udało się pobrać lokalizacji');
+    await expect(page.locator('#komunikat')).toContainText('lokalizacj');
+    expect(okno).toBe(false);
     await expect(page.locator('#count')).not.toContainText('posortowano');
-    await expect(page.locator('#list .item').first()).toBeVisible();
+    await expect(page.locator('#list .item').first()).toBeAttached();
   });
 });

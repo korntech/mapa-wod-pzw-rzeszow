@@ -18,7 +18,7 @@ header small{opacity:.75}
 #search{width:100%;padding:8px 10px;border:1px solid #ccc;border-radius:8px;font-size:14px;margin-bottom:8px}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid #bbb;background:#fff;cursor:pointer;user-select:none}
-@media(pointer:coarse){.chip{padding:9px 14px;font-size:13px}#locbtn,#infobtn{padding:9px 14px}header a{padding:8px 0}}
+@media(pointer:coarse){.chip{padding:9px 14px;font-size:13px}#menu .ramka{padding:9px 14px}header a{padding:8px 0}}
 .pzw-notice{max-width:min(250px,60vw)!important}
 .chip.on{color:#fff;border-color:transparent}
 .chip.more{font-family:inherit;color:#0d3b66;border-style:dashed}
@@ -42,7 +42,6 @@ header small{opacity:.75}
 .item .meta{font-size:11.5px;color:#666}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
 #map{flex:1;background:#f4efe6}
-#locbtn{background:#fff;color:#0d3b66;border:none;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;font-weight:600}
 .leaflet-popup-content{font-size:13px;max-width:280px}
 .leaflet-popup-content h3{font-size:14px;margin-bottom:4px}
 .leaflet-popup-content .tag{display:inline-block;font-size:10.5px;padding:1px 7px;border-radius:999px;color:#fff;margin-bottom:5px}
@@ -70,10 +69,53 @@ header small{opacity:.75}
 #rep-done a{color:#0d3b66;font-weight:600}
 #rep-done .actions{margin-top:14px}
 #rep-done button{background:#0d3b66;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:14px;cursor:pointer;font-weight:600}
+#menubtn{display:none;margin-left:auto;background:none;border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:8px;font-size:20px;line-height:1;padding:6px 11px;cursor:pointer}
+#menu{display:flex;align-items:center;gap:12px;flex:1;flex-wrap:wrap}
+#menu a,#menu button{font-family:inherit;font-size:13px;color:#fff;text-decoration:none}
+#menu .wykaz{color:#ffd54f;font-weight:600}
+#menu .ramka{background:transparent;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;cursor:pointer}
+#menu .operator{margin-left:auto;color:#e3eef8;font-size:12.5px}
+#uchwyt{display:none}
+#main{position:relative}
+.pzw-loc{display:block;background:#fff;color:#0d3b66;border:none;border-radius:8px;padding:7px 11px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
+.pzw-loc.aktywny{color:#e53935}
+.pzw-legenda{background:#fff;font-size:12.5px}
+.pzw-legenda-btn{background:#fff;border:none;border-radius:4px;padding:6px 10px;font:600 12.5px system-ui,sans-serif;color:#0d3b66;cursor:pointer}
+.pzw-legenda ul{list-style:none;padding:4px 10px 8px;margin:0}
+.pzw-legenda li{display:flex;align-items:center;gap:6px;padding:2px 0}
+.leaflet-popup-content .akcje{margin-top:8px;line-height:1.9}
+.leaflet-popup-content .drobny{font-size:11px;color:#666}
+.nav-wybor{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.nav-wybor span{font-size:12px;color:#555}
+.nav-wybor a{border:1px solid #0d3b66;border-radius:999px;padding:4px 10px;text-decoration:none;color:#0d3b66;font-weight:600}
+#komunikat{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);max-width:min(92vw,420px);background:#263238;color:#fff;padding:10px 14px;border-radius:10px;font-size:13.5px;line-height:1.4;box-shadow:0 4px 16px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:3000;word-break:break-word}
+#komunikat.widoczny{opacity:1;transform:translate(-50%,0);pointer-events:auto}
 @media(max-width:720px){
- #main{flex-direction:column}
- #side{width:100%;height:46%;order:2;border-right:none;border-top:1px solid #ddd}
- #map{order:1}
+ header{flex-wrap:nowrap}
+ header h1{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+ #menubtn{display:block}
+ #menu{display:none;position:absolute;top:100%;right:8px;flex-direction:column;align-items:stretch;gap:0;background:#0d3b66;border-radius:0 0 10px 10px;padding:6px;box-shadow:0 6px 16px rgba(0,0,0,.3);min-width:220px}
+ #menu.open{display:flex}
+ #menu a,#menu button{padding:12px 12px;font-size:15px;text-align:left;border:none;border-radius:6px;margin:0}
+ #menu .operator{margin-left:0}
+ header{position:relative}
+ #map{position:absolute;inset:0}
+ #side{position:absolute;left:0;right:0;bottom:0;width:auto;z-index:1100;border:none;border-radius:14px 14px 0 0;box-shadow:0 -4px 16px rgba(0,0,0,.18);
+  --peek:132px;--half:50%;--full:calc(100% - 12px);height:var(--peek);transition:height .22s ease;overflow:hidden;padding-bottom:env(safe-area-inset-bottom)}
+ #side[data-stan="half"]{height:var(--half)}
+ #side[data-stan="full"]{height:var(--full)}
+ #side.ciagniety{transition:none}
+ #uchwyt{display:block;flex:none;height:22px;cursor:grab;touch-action:none;position:relative}
+ #uchwyt::after{content:"";position:absolute;left:50%;top:8px;width:42px;height:5px;margin-left:-21px;border-radius:3px;background:#b0bec5}
+ #filters{padding:0 10px 8px}
+ .pzw-loc span{display:none}
+ .pzw-loc{font-size:18px;padding:6px 10px}
+ #map .leaflet-bottom{bottom:132px}
+ #komunikat{bottom:146px}
+ .popup-otwarty .leaflet-top{display:none}
+ #filters>.chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -10px;padding:0 10px}
+ #filters>.chips::-webkit-scrollbar{display:none}
+ #filters>.chips .chip{flex:none;white-space:nowrap}
 }
 </style>
 </head>
@@ -81,14 +123,17 @@ header small{opacity:.75}
 <header>
  <h1>🎣 Wody PZW — Okręg Rzeszów</h1>
  <small>wg wykazu 2026 · dane i podkład: GUGiK</small>
- <button id="locbtn">📍 Najbliżej mnie</button>
- <a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer" style="color:#ffd54f;font-size:13px;font-weight:600;text-decoration:none">📄 Wykaz źródłowy (PZW)</a>
- <a href="wykaz.html" style="color:#fff;font-size:13px;text-decoration:none;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px">📋 Wykaz PDF</a>
- <button id="infobtn" style="background:transparent;color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer">ℹ️ O mapie</button>
- <a href="admin.html" style="margin-left:auto;color:#e3eef8;font-size:12.5px;text-decoration:none">🔑 Operator</a>
+ <button type="button" id="menubtn" aria-expanded="false" aria-controls="menu" aria-label="Menu">☰</button>
+ <nav id="menu" aria-label="Menu strony">
+  <a data-link="wykazPzw" href="#" target="_blank" rel="noopener noreferrer" class="wykaz">📄 Wykaz źródłowy (PZW)</a>
+  <a href="wykaz.html" class="ramka">📋 Wykaz PDF</a>
+  <button type="button" id="infobtn" class="ramka">ℹ️ O mapie</button>
+  <a href="admin.html" class="operator">🔑 Operator</a>
+ </nav>
 </header>
-<div id="main">
+<main id="main">
  <div id="side">
+  <div id="uchwyt" role="button" tabindex="0" aria-label="Lista łowisk — rozwiń lub zwiń" aria-expanded="false"></div>
   <div id="filters">
    <input id="search" placeholder="Szukaj łowiska… (np. Mrowla, San, pstrąg)">
    <div class="chips">
@@ -112,7 +157,7 @@ header small{opacity:.75}
   <div id="list"></div>
  </div>
  <div id="map"></div>
-</div>
+</main>
 <div id="infomodal" class="modal">
 <div>
 <h2>O tej mapie <button type="button" class="close" data-close aria-label="Zamknij">×</button></h2>

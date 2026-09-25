@@ -32,7 +32,11 @@ test.describe('wolne łącze (3G)', () => {
 });
 
 test.describe('bez sieci (powrót na stronę)', () => {
-  test('po wcześniejszej wizycie lista i obejrzane kafle działają offline', async ({ page, context, browserName }) => {
+  test('po wcześniejszej wizycie lista i obejrzane kafle działają offline', async ({
+    page,
+    context,
+    browserName,
+  }) => {
     // Offline z service workerem Playwright obsługuje tylko w Chromium (Firefox: setOffline nie obejmuje SW,
     // WebKit: „internal error” przy przeładowaniu). Na iOS offline trzeba sprawdzić ręcznie.
     test.skip(browserName !== 'chromium', 'offline + SW tylko w Chromium');

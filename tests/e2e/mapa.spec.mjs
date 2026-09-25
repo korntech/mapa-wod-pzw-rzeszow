@@ -8,6 +8,7 @@ import {
   domyslnieNaLiscie,
   liczbaPozycji,
   otworzMape,
+  otworzOMapie,
   sledz,
   tylkoSnapshot,
   wczytaneKafle,
@@ -31,7 +32,11 @@ test('wczytuje łowiska z bazy i podkład przez cache kafli, bez błędów', asy
   expect(s.bledy).toEqual([]);
 });
 
-test('baza niedostępna → dane ze snapshotu (liczby zgodne z data.json)', async ({ page, request, baseURL }) => {
+test('baza niedostępna → dane ze snapshotu (liczby zgodne z data.json)', async ({
+  page,
+  request,
+  baseURL,
+}) => {
   const s = sledz(page);
   const dane = await daneStrony(request, baseURL);
   await tylkoSnapshot(page);
@@ -39,8 +44,8 @@ test('baza niedostępna → dane ze snapshotu (liczby zgodne z data.json)', asyn
 
   await expect.poll(() => liczbaPozycji(page)).toBe(domyslnieNaLiscie(dane));
   await expect(page.locator('#list .item')).toHaveCount(domyslnieNaLiscie(dane));
-  // Znaczniki zbiorników i linie rzek (path w SVG Leaflet).
-  await expect.poll(() => page.locator('path.leaflet-interactive').count()).toBeGreaterThanOrEqual(domyslnieNaLiscie(dane));
+  // Łowiska rysowane na canvas (jedna warstwa rysunku zamiast tysięcy elementów SVG).
+  await expect(page.locator('#map canvas.leaflet-zoom-animated')).toHaveCount(1);
   await expect(page.locator('#count')).toContainText('Dane: ' + dane.meta.snapshot.slice(0, 10));
 
   const hosty = new Set(s.kafle.map((k) => k.host));
@@ -80,23 +85,54 @@ test('układ mieści się na ekranie (bez poziomego przewijania)', async ({ page
   }));
   expect(szer).toBeLessThanOrEqual(okno);
 
-  for (const sel of ['#locbtn', '#infobtn', '#search', '.leaflet-control-zoom-in', '.leaflet-control-layers']) {
+  const telefon = await page.locator('#uchwyt').isVisible();
+  const przyciski = [
+    '#locbtn',
+    '#search',
+    '.leaflet-control-zoom-in',
+    '.leaflet-control-layers',
+    '.pzw-legenda-btn',
+  ];
+  for (const sel of [...przyciski, telefon ? '#menubtn' : '#infobtn']) {
     await expect(page.locator(sel)).toBeInViewport();
   }
   const mapa = await page.locator('#map').boundingBox();
-  expect(mapa.height).toBeGreaterThan(200);
-  // Na małych telefonach (iPhone SE) lista zaczyna się pod filtrami — ma być osiągalna przewinięciem panelu.
-  const pierwsza = page.locator('#list .item').first();
-  await pierwsza.scrollIntoViewIfNeeded();
-  await expect(pierwsza).toBeInViewport();
-  await expect(page.locator('#map')).toBeInViewport({ ratio: 0.5 });
+  expect(mapa.height).toBeGreaterThan(telefon ? 400 : 200);
+  if (telefon) {
+    // Panel listy: domyślnie wysunięty tylko na wyszukiwarkę; po rozwinięciu lista jest widoczna.
+    await expect(page.locator('#side')).toHaveAttribute('data-stan', 'peek');
+    await page.locator('#uchwyt').click();
+    await expect(page.locator('#side')).toHaveAttribute('data-stan', 'half');
+  }
+  await expect(page.locator('#list .item').first()).toBeInViewport();
+});
+
+test('menu ☰ na telefonie otwiera i zamyka linki', async ({ page }) => {
+  await otworzMape(page);
+  test.skip(!(await page.locator('#menubtn').isVisible()), 'menu ☰ tylko na wąskim ekranie');
+  await expect(page.locator('#menu')).toBeHidden();
+  await page.locator('#menubtn').click();
+  await expect(page.locator('#menu')).toBeVisible();
+  await expect(page.locator('#menubtn')).toHaveAttribute('aria-expanded', 'true');
+  await page.locator('header h1').click();
+  await expect(page.locator('#menu')).toBeHidden();
+});
+
+test('legenda rozwija się i zwija', async ({ page }) => {
+  await otworzMape(page);
+  const lista = page.locator('.pzw-legenda ul');
+  await expect(lista).toBeHidden();
+  await page.locator('.pzw-legenda-btn').click();
+  await expect(lista).toBeVisible();
+  await expect(lista).toContainText('Położenie przybliżone');
+  await page.locator('.pzw-legenda-btn').click();
+  await expect(lista).toBeHidden();
 });
 
 test('okno „O mapie” otwiera się i zamyka', async ({ page }) => {
   await otworzMape(page);
-  await page.locator('#infobtn').click();
-  await expect(page.locator('#infomodal')).toBeVisible();
-  await expect(page.locator('#stan-danych')).toContainText('Stan danych:');
+  await otworzOMapie(page);
+  await expect(page.locator('#stan-danych')).toContainText('Dane');
   await page.locator('#infomodal [data-close]').click();
   await expect(page.locator('#infomodal')).toBeHidden();
 });

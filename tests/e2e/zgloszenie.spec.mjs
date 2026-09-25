@@ -1,7 +1,7 @@
 /* Formularz „Zgłoś uwagę”. Funkcja zgłoszeń jest podmieniona (page.route) — testy nie tworzą
  * prawdziwych issue w repozytorium ani wpisów w bazie. */
 import { test, expect } from '@playwright/test';
-import { FUNKCJA_ZGLOSZEN, otworzMape } from './pomocnicze.mjs';
+import { FUNKCJA_ZGLOSZEN, kliknijWLiscie, otworzMape, otworzOMapie } from './pomocnicze.mjs';
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -18,17 +18,22 @@ async function atrapaFunkcji(page, status, odpowiedz) {
     const req = route.request();
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS });
     wyslane.push(req.postDataJSON());
-    return route.fulfill({ status, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(odpowiedz) });
+    return route.fulfill({
+      status,
+      headers: { ...CORS, 'Content-Type': 'application/json' },
+      body: JSON.stringify(odpowiedz),
+    });
   });
   return wyslane;
 }
 
 /** Otwiera formularz z popupu pierwszego łowiska na liście; zwraca jego nazwę. */
 async function otworzZPopupu(page) {
-  const pierwsza = page.locator('#list .item').first();
-  const nazwa = (await pierwsza.locator('b').textContent()).trim();
-  await pierwsza.click();
-  await page.locator('.leaflet-popup').getByRole('link', { name: /Zgłoś uwagę/ }).click();
+  const nazwa = await kliknijWLiscie(page);
+  await page
+    .locator('.leaflet-popup')
+    .getByRole('link', { name: /Zgłoś uwagę/ })
+    .click();
   await expect(page.locator('#reportmodal')).toBeVisible();
   return nazwa;
 }
@@ -39,7 +44,10 @@ test.use({ serviceWorkers: 'block' });
 
 test.beforeEach(async ({ page }) => {
   await otworzMape(page);
-  expect(await page.evaluate(() => !!navigator.serviceWorker?.controller), 'SW nie może kontrolować strony').toBe(false);
+  expect(
+    await page.evaluate(() => !!navigator.serviceWorker?.controller),
+    'SW nie może kontrolować strony'
+  ).toBe(false);
 });
 
 test('walidacja, wysłanie i potwierdzenie z numerem', async ({ page }) => {
@@ -51,14 +59,18 @@ test('walidacja, wysłanie i potwierdzenie z numerem', async ({ page }) => {
   const nazwa = await otworzZPopupu(page);
   const form = page.locator('#reportform');
   // Woda wybrana z popupu.
-  expect(await form.locator('select[name=woda] option:checked').textContent()).toContain(nazwa.replace(/ \(odcinek \d+\)$/, ''));
+  expect(await form.locator('select[name=woda] option:checked').textContent()).toContain(
+    nazwa.replace(/ \(odcinek \d+\)$/, '')
+  );
 
   await form.locator('textarea[name=opis]').fill('krótko');
   await form.getByRole('button', { name: 'Wyślij zgłoszenie' }).click();
   await expect(form.locator('.status')).toContainText('Opis musi mieć');
   expect(wyslane).toHaveLength(0);
 
-  await form.locator('textarea[name=opis]').fill('Test automatyczny E2E — brak tablicy informacyjnej przy wjeździe.');
+  await form
+    .locator('textarea[name=opis]')
+    .fill('Test automatyczny E2E — brak tablicy informacyjnej przy wjeździe.');
   await form.getByRole('button', { name: 'Wyślij zgłoszenie' }).click();
   await expect(page.locator('#rep-done')).toBeVisible();
   await expect(page.locator('#rep-done [data-numer]')).toHaveText('999');
@@ -71,7 +83,7 @@ test('walidacja, wysłanie i potwierdzenie z numerem', async ({ page }) => {
 
 test('„Inne” wymaga nazwy; awaria serwera daje link zapasowy do GitHuba', async ({ page }) => {
   await atrapaFunkcji(page, 503, { ok: false, error: 'baza' });
-  await page.locator('#infobtn').click();
+  await otworzOMapie(page);
   await page.locator('#infomodal a[data-report]').click();
   const form = page.locator('#reportform');
   await expect(form).toBeVisible();

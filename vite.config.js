@@ -29,7 +29,7 @@ function contentSecurityPolicy() {
     .join('; ');
 }
 
-/** Wstawia politykę CSP jako <meta> do każdej strony w buildzie produkcyjnym. */
+/** Wstawia politykę CSP jako <meta> (i preconnect do hostów danych) do każdej strony w buildzie produkcyjnym. */
 function cspPlugin() {
   return {
     name: 'pzw-csp',
@@ -40,6 +40,14 @@ function cspPlugin() {
         attrs: { 'http-equiv': 'Content-Security-Policy', content: contentSecurityPolicy() },
         injectTo: 'head-prepend',
       },
+      // Wcześniejsze zestawienie połączeń z hostem kafli i bazą (żądania CORS, stąd crossorigin).
+      ...[config.basemaps.kafleUrl || config.basemaps.serviceUrl, config.supabase.url]
+        .filter(Boolean)
+        .map((url) => ({
+          tag: 'link',
+          attrs: { rel: 'preconnect', href: new URL(url).origin, crossorigin: '' },
+          injectTo: 'head',
+        })),
     ],
   };
 }
