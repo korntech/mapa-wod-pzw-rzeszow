@@ -7,18 +7,18 @@ const config = JSON.parse(readFileSync(resolve(__dirname, 'config.json'), 'utf8'
 /** Content-Security-Policy ograniczona do hostów z config.json. */
 function contentSecurityPolicy() {
   const origin = (url) => new URL(url).origin;
+  const tiles = [
+    origin(config.basemaps.serviceUrl),
+    ...(config.basemaps.kafleUrl ? [origin(config.basemaps.kafleUrl)] : []),
+  ];
   const directives = {
     'default-src': ["'self'"],
     'script-src': ["'self'"],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': [
-      "'self'",
-      'data:',
-      'blob:',
-      origin(config.basemaps.serviceUrl),
-      ...(config.basemaps.kafleUrl ? [origin(config.basemaps.kafleUrl)] : []),
-    ],
-    'connect-src': ["'self'", origin(config.supabase.url)],
+    'img-src': ["'self'", 'data:', 'blob:', ...tiles],
+    // Kafle także w connect-src: service worker pobiera je przez fetch(), a Firefox
+    // stosuje do niego CSP strony (bez tego każdy kafel kończy się błędem 503 z SW).
+    'connect-src': ["'self'", origin(config.supabase.url), ...tiles],
     'font-src': ["'self'"],
     'object-src': ["'none'"],
     'base-uri': ["'self'"],
