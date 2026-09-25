@@ -4,7 +4,6 @@
 export const LIMITY = {
   opisMin: 10,
   opisMax: 2000,
-  kontaktMax: 200,
   /** Nazwa wpisana ręcznie przy typie „inne”; nazwy z listy są zawsze dłuższe. */
   nazwaMin: 2,
   nazwaMax: 200,
@@ -20,7 +19,9 @@ export const LIMITY = {
  * „inne” to brakujące łowisko albo uwaga ogólna — nazwę wpisuje zgłaszający, współrzędnych brak. */
 export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka', inne: 'inne' };
 
-/** Jedyne dozwolone pola wejścia; każde inne oznacza odrzucenie (ścisły schemat). */
+/** Jedyne dozwolone pola wejścia; każde inne oznacza odrzucenie (ścisły schemat).
+ *  „kontakt” jest przyjmowany, ale ignorowany: formularz już go nie ma (od 25.09.2026 nie zbieramy
+ *  danych kontaktowych), a strona z pamięci podręcznej przeglądarki może jeszcze wysłać puste pole. */
 const POLA = new Set(['typ', 'nazwa', 'lat', 'lon', 'opis', 'kontakt', 'www']);
 
 const tekst = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -55,8 +56,7 @@ export function validateReport(input) {
   }
   const opis = tekst(input.opis, LIMITY.opisMax + 1);
   if (opis.length < LIMITY.opisMin || opis.length > LIMITY.opisMax) return { ok: false, error: 'opis' };
-  const kontakt = tekst(input.kontakt, LIMITY.kontaktMax);
-  return { ok: true, report: { typ: input.typ, nazwa, lat, lon, opis, kontakt } };
+  return { ok: true, report: { typ: input.typ, nazwa, lat, lon, opis } };
 }
 
 /* Tekst użytkownika trafia do ogrodzonego bloku kodu: GitHub nie interpretuje w nim Markdown,
@@ -75,16 +75,12 @@ export function blokKodu(s) {
 /** Nazwa bez znaków Markdown, wzmianek i odwołań (# i @) — do tytułu i linii „Woda”. */
 const czystaNazwa = (nazwa) => nazwa.replace(/[`*_~[\]<>#@]/g, '').trim() || '(bez nazwy)';
 
-/** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy, id — numer wpisu w bazie.
- *  Kontakt nie jest publikowany: zostaje w bazie Okręgu (retencja jak dla adresu IP).
+/** Tytuł i treść issue dla zgłoszenia; mapUrl to adres publicznej mapy.
  *  Nazwa w treści jest w kodzie liniowym (odwrotne apostrofy usunięte, więc nie da się go zamknąć):
  *  przy typie „inne” to tekst użytkownika, a w kodzie GitHub nie tworzy linków ani wzmianek. */
-export function issueContent(report, mapUrl, id) {
+export function issueContent(report, mapUrl) {
   const lines = [`**Woda:** \`${czystaNazwa(report.nazwa)}\` (${TYPY[report.typ]})`];
   if (report.lat != null && report.lon != null) lines.push(`**Współrzędne:** ${report.lat}, ${report.lon}`);
-  if (report.kontakt) {
-    lines.push(`**Kontakt:** podany — dostępny operatorom w bazie${id ? ` (wpis nr ${id})` : ''}`);
-  }
   lines.push(
     '',
     '**Opis zgłoszenia:**',

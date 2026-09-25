@@ -25,7 +25,6 @@ test('przyjmuje poprawne zgłoszenie i przycina pola', () => {
     lat: 50.012346,
     lon: 22.012346,
     opis: 'Zbiornik jest zaznaczony w złym miejscu.',
-    kontakt: 'jan@example.com',
   });
 });
 
@@ -56,17 +55,19 @@ test('odrzuca współrzędne spoza zakresu', () => {
   assert.deepEqual(validateReport({ ...poprawne, lon: 'abc' }), { ok: false, error: 'wspolrzedne' });
 });
 
-test('brak kontaktu jest dozwolony', () => {
-  const wynik = validateReport({ ...poprawne, kontakt: undefined });
-  assert.equal(wynik.ok, true);
-  assert.equal(wynik.report.kontakt, '');
+test('kontakt nie jest zbierany: pole z wejścia (stara strona w cache) jest ignorowane', () => {
+  for (const kontakt of [undefined, '', 'jan@example.com']) {
+    const wynik = validateReport({ ...poprawne, kontakt });
+    assert.equal(wynik.ok, true);
+    assert.equal(Object.hasOwn(wynik.report, 'kontakt'), false);
+  }
 });
 
 test('odrzuca wejście, które nie jest obiektem', () => {
   assert.deepEqual(validateReport(null), { ok: false, error: 'typ' });
 });
 
-test('treść issue zawiera nazwę, typ, współrzędne, opis i link do mapy; kontakt NIE jest publikowany', () => {
+test('treść issue zawiera nazwę, typ, współrzędne, opis i link do mapy; bez kontaktu', () => {
   const { report } = validateReport(poprawne);
   const { title, body } = issueContent(report, 'https://example.org/mapa/', 17);
   assert.equal(title, 'Zgłoszenie: Zalew Rzeszowski');
@@ -74,7 +75,7 @@ test('treść issue zawiera nazwę, typ, współrzędne, opis i link do mapy; ko
   assert.match(body, /50\.012346, 22\.012346/);
   assert.match(body, /Zbiornik jest zaznaczony w złym miejscu\./);
   assert.doesNotMatch(body, /jan@example\.com/);
-  assert.match(body, /Kontakt:\*\* podany — dostępny operatorom w bazie \(wpis nr 17\)/);
+  assert.doesNotMatch(body, /Kontakt/);
   assert.match(body, /https:\/\/example\.org\/mapa\//);
 });
 
@@ -166,7 +167,6 @@ test('inne: bez współrzędnych jest poprawne, lat/lon w raporcie to null', () 
       lat: null,
       lon: null,
       opis: inne.opis,
-      kontakt: '',
     });
   }
 });
@@ -218,8 +218,7 @@ test('treść issue dla inne: tytuł z nazwą, etykieta typu „inne”, bez lin
   assert.equal(title, 'Zgłoszenie: Staw w Boguchwale');
   assert.match(body, /^\*\*Woda:\*\* `Staw w Boguchwale` \(inne\)$/m);
   assert.doesNotMatch(body, /Współrzędne/);
-  assert.match(body, /Kontakt:\*\* podany — dostępny operatorom w bazie \(wpis nr 3\)/);
-  assert.doesNotMatch(body, /jan@example\.com/);
+  assert.doesNotMatch(body, /Kontakt|jan@example\.com/);
   assert.match(body, /Brakuje tego łowiska na mapie/);
 });
 

@@ -8,7 +8,6 @@ const input = {
   lat: 50.01,
   lon: 22.01,
   opis: 'Zbiornik jest zaznaczony w złym miejscu.',
-  kontakt: '',
   www: '',
 };
 

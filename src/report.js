@@ -116,7 +116,6 @@ export function initReportForm({ options, send, issuesUrl, mapUrl }) {
       lat: woda ? woda.lat : null,
       lon: woda ? woda.lon : null,
       opis: form.elements.opis.value,
-      kontakt: form.elements.kontakt.value,
       www: form.elements.www.value,
     });
     if (!wynik.ok) {

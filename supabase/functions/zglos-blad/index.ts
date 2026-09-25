@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
         p_lat: r.lat, // null dla typu „inne” (kolumny lat/lon dopuszczają null od migracji 2026-09-24)
         p_lon: r.lon,
         p_opis: r.opis,
-        p_kontakt: r.kontakt || null,
+        p_kontakt: null, // kontaktu nie zbieramy (od 25.09.2026); parametr zostaje dla zgodności podpisu
         p_na_godzine: LIMITY.naGodzine,
         p_lacznie_na_godzine: LIMITY.lacznieNaGodzine,
         p_lacznie_na_dobe: LIMITY.lacznieNaDobe,

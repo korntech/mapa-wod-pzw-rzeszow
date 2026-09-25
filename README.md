@@ -230,7 +230,8 @@ skąd przyszedł kafel. Testy: `node --test cloudflare/kafle/` (w `npm test`).
 „Zgłoś uwagę” w popupie łowiska i w oknie „O mapie” otwiera formularz „Zgłoś uwagę do mapy”: woda
 z listy (zbiornik lub rzeka — nazwa i współrzędne z danych mapy) **albo pozycja „Inne — brakujące łowisko
 lub uwaga ogólna”** (typ `inne`: zgłaszający wpisuje sam, czego dotyczy zgłoszenie, 2–200 znaków; współrzędne
-są `null`), opis (10–2000 znaków), opcjonalny kontakt. Teksty formularza są pisane dla wędkarza, nie
+są `null`), opis (10–2000 znaków). **Formularz nie zbiera danych kontaktowych** (od 25.09.2026 — odpowiedź operatora
+jest publiczna, w issue zgłoszenia). Teksty formularza są pisane dla wędkarza, nie
 dla dewelopera — bez „issue” czy „repozytorium”; zgłoszenie jest opisane jako „publiczne, widoczne na stronie
 projektu”. Stronę obsługuje funkcja Supabase [`supabase/functions/zglos-blad`](supabase/functions/zglos-blad/index.ts):
 sprawdza treść (ścisły schemat pól — te same klucze dla każdego typu), **atomowo rezerwuje limit** w bazie (funkcja SQL
@@ -243,8 +244,9 @@ issue są w module [`zgloszenie.js`](supabase/functions/zglos-blad/zgloszenie.js
 logika obsługi w [`obsluga.js`](supabase/functions/zglos-blad/obsluga.js) (testy: `npm test`).
 Opis zgłaszającego trafia do issue jako blok kodu (bez Markdown, linków i wzmianek), a nazwa — w kodzie
 liniowym z usuniętymi znakami Markdown, `#` i `@` (przy typie `inne` to również tekst użytkownika); linia
-„Współrzędne” pojawia się tylko, gdy są. **Kontakt nie jest publikowany** — zostaje w tabeli `zgloszenia`,
-dostępnej operatorom w panelu Supabase. Triage (`tools/triage`) rozpoznaje typ `inne` i nie szuka dla niego
+„Współrzędne” pojawia się tylko, gdy są. Kolumna `kontakt` w tabeli `zgloszenia` zostaje pusta (CHECK
+`zgloszenia_bez_kontaktu`, migracja `20260925150000`); pole `kontakt` z wejścia (stara strona w pamięci
+przeglądarki) jest ignorowane. Triage (`tools/triage`) rozpoznaje typ `inne` i nie szuka dla niego
 rekordu na mapie.
 
 Typ `inne` wymaga migracji `20260924104542_zgloszenia_inne.sql` (CHECK `typ` rozszerzony o `'inne'`,
@@ -270,7 +272,7 @@ w terminie ustawionym przy tworzeniu — wtedy trzeba go odnowić i ustawić sek
 
 Ochrona przed nadużyciami (limity w `zgloszenie.js` → `LIMITY`): 5 zgłoszeń na godzinę z jednego adresu IP,
 20 na godzinę i 60 na dobę łącznie, odrzucanie powtórek (to samo łowisko z tego samego adresu albo identyczny
-opis w ciągu doby), pole-pułapka dla botów, limit rozmiaru żądania 16 KB. Adresy IP i kontakty są kasowane
+opis w ciągu doby), pole-pułapka dla botów, limit rozmiaru żądania 16 KB. Wpisy (z adresem IP — jedyną daną osobową) są kasowane
 po 30 dniach zadaniem `pg_cron` (`zgloszenia-retencja`, codziennie 03:15 UTC; przebiegi i błędy:
 `select * from cron.job_run_details order by start_time desc`). Wyłącznik awaryjny: sekret
 `ZGLOSZENIA_WSTRZYMANE=1` w funkcji (`npx supabase secrets set …`) zatrzymuje przyjmowanie zgłoszeń bez zmiany

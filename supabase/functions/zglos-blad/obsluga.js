@@ -10,7 +10,7 @@
 import { validateReport, issueContent } from './zgloszenie.js';
 
 /** Współrzędne są null dla typu „inne” (brakujące łowisko / uwaga ogólna — bez rekordu na mapie).
- * @typedef {{ ip: string, typ: string, nazwa: string, lat: number|null, lon: number|null, opis: string, kontakt: string }} Rezerwacja */
+ * @typedef {{ ip: string, typ: string, nazwa: string, lat: number|null, lon: number|null, opis: string }} Rezerwacja */
 
 /**
  * @param {object} deps
@@ -47,7 +47,7 @@ export async function obsluzZgloszenie({ input, ip, mapUrl, rezerwuj, utworzIssu
   }
   const id = rezerwacja.id;
 
-  const { title, body } = issueContent(report, mapUrl, id);
+  const { title, body } = issueContent(report, mapUrl);
   let issue;
   try {
     issue = await utworzIssue(title, body);

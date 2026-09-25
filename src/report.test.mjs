@@ -135,7 +135,6 @@ test('poprawne zgłoszenie trafia do send i pokazuje numer issue', async () => {
   const { form, el, calls, submit } = setupForm();
   form.open('zb:0');
   el('textarea[name=opis]').value = 'Zbiornik jest zaznaczony w złym miejscu.';
-  el('input[name=kontakt]').value = 'jan@example.com';
   await submit();
   assert.deepEqual(calls, [
     {
@@ -144,7 +143,6 @@ test('poprawne zgłoszenie trafia do send i pokazuje numer issue', async () => {
       lat: 50.01,
       lon: 22.01,
       opis: 'Zbiornik jest zaznaczony w złym miejscu.',
-      kontakt: 'jan@example.com',
     },
   ]);
   assert.equal(el('#reportform').style.display, 'none');
@@ -266,7 +264,6 @@ test('„Inne” z nazwą wysyła typ inne, nazwę użytkownika i lat/lon null',
       lat: null,
       lon: null,
       opis: 'Brakuje tego łowiska na mapie.',
-      kontakt: '',
     },
   ]);
   assert.equal(el('#rep-done').style.display, 'block');
