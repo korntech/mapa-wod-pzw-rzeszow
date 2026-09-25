@@ -449,9 +449,11 @@ function initUi(map, layers, arkusz) {
     render();
   });
 
-  /** Podmienia dane (pierwsze wczytanie albo odświeżenie z bazy) z zachowaniem filtrów i otwartego łowiska. */
-  function ustawDane(data) {
+  /** Podmienia dane (pierwsze wczytanie albo odświeżenie z bazy) z zachowaniem filtrów i otwartego łowiska.
+   *  Przy odświeżeniu widok mapy się nie zmienia — otwarty popup jest tylko otwierany ponownie. */
+  function ustawDane(data, { odswiezenie = false } = {}) {
     const otwarte = idZHasha(location.hash);
+    const bylOtwarty = odswiezenie && !!map._popup && map.hasLayer(map._popup);
     Object.values(layers).forEach((g) => g.clearLayers());
     entries = buildEntries(data, layers);
     byId = new Map(entries.map((e) => [e.id, e]));
@@ -461,7 +463,9 @@ function initUi(map, layers, arkusz) {
     obwodEl.value = obwodyList(entries).includes(wybrany) ? wybrany : '';
     filters.obwod = obwodEl.value;
     applyFilters();
-    if (otwarte && byId.has(otwarte)) pokaz(byId.get(otwarte));
+    if (!otwarte || !byId.has(otwarte)) return;
+    if (!odswiezenie) pokaz(byId.get(otwarte));
+    else if (bylOtwarty) byId.get(otwarte).target.openPopup();
   }
 
   function ustawStanDanych(tekst) {
@@ -640,7 +644,7 @@ async function main() {
 
   const { data, zmienione, zBazy } = polaczDane(snapshot, await baza);
   if (zmienione) {
-    ui.ustawDane(data);
+    ui.ustawDane(data, { odswiezenie: true });
     form.ustawWody(waterOptions(data));
   }
   if (zBazy) ui.ustawStanDanych('na bieżąco');

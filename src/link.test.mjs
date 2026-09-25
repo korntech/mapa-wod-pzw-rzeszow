@@ -87,6 +87,12 @@ test('scalanie: baza nadpisuje niepuste kolekcje; flagi zmienione i zBazy', () =
   assert.equal(takieSame.zmienione, false);
   assert.equal(takieSame.zBazy, true);
 
+  // Ta sama treść w innej kolejności to nie zmiana; zostaje kolejność snapshotu.
+  const snap2 = { ...snap, zb: [{ n: 'A' }, { n: 'B' }] };
+  const kolejnosc = polaczDane(snap2, { zb: [{ n: 'B' }, { n: 'A' }] });
+  assert.equal(kolejnosc.zmienione, false);
+  assert.equal(kolejnosc.data.zb, snap2.zb);
+
   const nowe = polaczDane(snap, { zb: [{ n: 'A' }, { n: 'B' }] });
   assert.equal(nowe.zmienione, true);
   assert.equal(nowe.zBazy, false);
