@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa do druku — wody PZW Okręg Rzeszów</title>
+<style>
+:root{--dark:#0d3b66;--blue:#1565c0;--niz:#0288d1;--green:#2e7d32;--gray:#616161;--line:#cfd6dd}
+*{box-sizing:border-box;margin:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1b1b1b;background:#e9edf1;font-size:13.5px;line-height:1.4}
+header{background:var(--dark);color:#fff;padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:16px;font-weight:600}
+header a{color:#fff;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:6px 12px;text-decoration:none;font-size:13px}
+#ustawienia{background:#fff;border-bottom:1px solid var(--line);padding:12px 14px;display:flex;gap:14px 22px;flex-wrap:wrap;align-items:flex-end}
+fieldset{border:none;padding:0;min-width:0}
+legend,label.tytul{font-size:11.5px;color:#556;font-weight:600;text-transform:uppercase;letter-spacing:.02em;margin-bottom:4px;display:block}
+select,input[type=number]{font:inherit;padding:6px 8px;border:1px solid #bbb;border-radius:8px;background:#fff}
+.opcje{display:flex;gap:6px 12px;flex-wrap:wrap;align-items:center}
+.opcje label{display:inline-flex;align-items:center;gap:4px;cursor:pointer}
+button{font:inherit;font-weight:600;border:none;border-radius:8px;padding:9px 16px;cursor:pointer}
+#generuj{background:var(--dark);color:#fff}
+#drukuj{background:#fff;color:var(--dark);border:1px solid var(--dark)}
+button[disabled]{opacity:.5;cursor:default}
+#status{font-size:12.5px;color:#445;min-height:1.3em;flex-basis:100%}
+#status.blad{color:#b00020}
+#dokument{padding:18px 0 40px}
+.strona{background:#fff;margin:0 auto 18px;box-shadow:0 1px 6px rgba(0,0,0,.15);position:relative;overflow:hidden;
+ display:flex;flex-direction:column;padding:10mm}
+.strona.mapa{page-break-after:always;break-after:page}
+.strona.klucz{page-break-after:always;break-after:page;min-height:0}
+.strona.klucz:last-child{page-break-after:auto;break-after:auto}
+.naglowek{height:9mm;display:flex;align-items:baseline;justify-content:space-between;gap:8mm;font-size:3.6mm;color:var(--dark)}
+.naglowek b{font-size:4.2mm}
+.naglowek .arkusz{font-size:3.2mm;color:#445}
+.mapa-obraz{flex:1;min-height:0;display:block;width:100%;object-fit:contain;object-position:left top;border:0.25mm solid #9aa5b1}
+.stopka{height:9mm;display:flex;align-items:center;gap:5mm;font-size:2.7mm;color:#333;flex-wrap:nowrap;overflow:hidden}
+.stopka .leg{display:inline-flex;align-items:center;gap:1.4mm;white-space:nowrap}
+.stopka svg{width:4.5mm;height:4.5mm;flex:none}
+.stopka .info{margin-left:auto;text-align:right;color:#556;white-space:nowrap}
+.klucz h2{font-size:4.6mm;color:var(--dark);margin-bottom:2mm}
+.klucz h3{font-size:3.8mm;margin:4mm 0 1.5mm;padding:1mm 2.5mm;border-radius:1.5mm;color:#fff}
+.klucz h3.zb{background:var(--blue)}.klucz h3.niz{background:var(--niz)}.klucz h3.gor{background:var(--green)}.klucz h3.gr{background:var(--gray)}
+.klucz table{width:100%;border-collapse:collapse;font-size:2.9mm}
+.klucz th,.klucz td{border:0.2mm solid var(--line);padding:0.9mm 1.6mm;vertical-align:top;text-align:left}
+.klucz th{background:#f2f5f8;font-weight:600}
+.klucz td.nr{font-weight:700;white-space:nowrap;width:9mm}
+.klucz td.ark{white-space:nowrap;color:#445}
+.klucz tr{page-break-inside:avoid;break-inside:avoid}
+.klucz thead{display:table-header-group}
+.klucz .nk{display:inline-block;font-size:2.4mm;padding:0 1.4mm;border-radius:99mm;background:#c62828;color:#fff;margin-left:1mm;vertical-align:0.3mm}
+.klucz .ok{color:#b26a00}
+.zastrz{margin-top:4mm;padding:2.5mm 3mm;background:#fff8e1;border:0.25mm solid #ffe082;border-radius:1.5mm;font-size:2.9mm}
+.zrodla{margin-top:2.5mm;font-size:2.7mm;color:#556}
+#pusty{max-width:720px;margin:40px auto;color:#556;text-align:center}
+@media(max-width:720px){#ustawienia{gap:10px 16px}.strona{transform-origin:top left}}
+@media print{
+ body{background:#fff}
+ header,#ustawienia,#pusty{display:none}
+ #dokument{padding:0}
+ .strona{box-shadow:none;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>🖨️ Mapa do druku — wody PZW Okręg Rzeszów</h1>
+ <a href="index.html">🗺️ Mapa</a>
+ <a href="wykaz.html">📋 Wykaz PDF</a>
+</header>
+
+<form id="ustawienia">
+ <fieldset>
+  <legend>Obszar</legend>
+  <select name="zakres" id="zakres">
+   <option value="okreg">cały Okręg</option>
+   <option value="widok" id="opcja-widok" disabled>widok z mapy (otwórz z menu mapy)</option>
+  </select>
+ </fieldset>
+ <fieldset>
+  <legend>Arkusze</legend>
+  <select name="atlas">
+   <option value="1">tylko przegląd</option>
+   <option value="2" selected>przegląd + 2×2</option>
+   <option value="3">przegląd + 3×3</option>
+  </select>
+ </fieldset>
+ <fieldset>
+  <legend>Papier</legend>
+  <div class="opcje">
+   <select name="format"><option>A4</option><option>A3</option></select>
+   <select name="orientacja"><option value="pozioma">pozioma</option><option value="pionowa">pionowa</option></select>
+   <select name="dpi" aria-label="Rozdzielczość"><option value="150">150 dpi (podgląd, drukarka domowa)</option><option value="200" selected>200 dpi</option><option value="300">300 dpi (drukarnia)</option></select>
+  </div>
+ </fieldset>
+ <fieldset>
+  <legend>Podkład</legend>
+  <div class="opcje">
+   <select name="podklad" id="podklad"></select>
+   <label><input type="checkbox" name="wygaszony" checked> wygaszony (punkty na pierwszym planie)</label>
+  </div>
+ </fieldset>
+ <fieldset>
+  <legend>Treść</legend>
+  <div class="opcje">
+   <label><input type="checkbox" name="w" value="zb" checked> zbiorniki</label>
+   <label><input type="checkbox" name="w" value="niz" checked> rzeki nizinne</label>
+   <label><input type="checkbox" name="w" value="gor" checked> kraina pstrąga</label>
+   <label><input type="checkbox" name="w" value="gr"> granice obwodów</label>
+   <label><input type="checkbox" name="nokill"> tylko NO-KILL</label>
+   <label>obwód: <select name="obwod" id="obwod"><option value="">wszystkie</option></select></label>
+  </div>
+ </fieldset>
+ <div class="opcje">
+  <button type="submit" id="generuj">Generuj</button>
+  <button type="button" id="drukuj" disabled>🖨️ Pobierz PDF</button>
+ </div>
+ <div id="status" role="status"></div>
+</form>
+
+<p id="pusty">Ustaw obszar, arkusze i papier, a potem kliknij <b>Generuj</b>. Mapa powstaje w przeglądarce z tych samych
+danych co mapa internetowa; <b>Pobierz PDF</b> otwiera okno drukowania — wybierz „Zapisz jako PDF” albo drukarkę.</p>
+<div id="dokument"></div>
+<script type="module" src="/src/druk.js"></script>
+</body>
+</html>
