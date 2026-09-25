@@ -381,15 +381,6 @@ function initUi(map, layers, arkusz) {
   });
   window.addEventListener('hashchange', otworzZHasha);
 
-  // „Mapa do druku” dostaje bieżący widok (bbox w stopniach), żeby dało się wydrukować wybrany obszar.
-  const druk = $('druklink');
-  map.on('moveend', () => {
-    const b = map.getBounds();
-    const f = (v) => v.toFixed(4);
-    druk.href = `druk.html?b=${f(b.getSouth())},${f(b.getWest())},${f(b.getNorth())},${f(b.getEast())}`;
-  });
-  map.fire('moveend');
-
   const toggleSet = (set, key, chip) => {
     if (set.has(key)) {
       set.delete(key);

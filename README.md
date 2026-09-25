@@ -16,9 +16,7 @@ Na mapie są:
   „Najbliżej mnie” (bieżące położenie, sortowanie wg odległości), „Nawiguj” (Google Maps / Apple Maps /
   Waze, wybór zapamiętany) i „Udostępnij” (link do łowiska: `…/#w=<id>`),
 - trzy podkłady GUGiK: mapa ogólna, mapa topograficzna, ortofotomapa,
-- **wykaz do druku** (`wykaz.html`) — tabele zbiorników, rzek i granic ze współrzędnymi; „Pobierz PDF” zapisuje A4,
-- **mapa do druku** (`druk.html`) — arkusze A4/A3 z podkładem GUGiK i ponumerowanymi łowiskami (przegląd + atlas 2×2/3×3,
-  cały Okręg albo bieżący widok mapy) oraz klucz z zasadami; rysowane w przeglądarce, PDF przez okno drukowania.
+- **wykaz do druku** (`wykaz.html`) — tabele zbiorników, rzek i granic ze współrzędnymi; „Pobierz PDF” zapisuje A4.
 
 ## Zastrzeżenie
 
@@ -75,7 +73,7 @@ Po przejściu na własną domenę ustaw `site.basePath` i `site.url` w `config.j
 
 | Ścieżka | Zawartość |
 |---|---|
-| `index.html`, `admin.html`, `wykaz.html`, `druk.html` | strony: mapa publiczna, panel operatora, wykaz do druku, mapa do druku |
+| `index.html`, `admin.html`, `wykaz.html` | strony: mapa publiczna, panel operatora, wykaz do druku |
 | `src/` | logika stron, warstwa danych, układ współrzędnych i podkłady, filtry, formularz zgłoszeń |
 | `public/data.json` | snapshot bazy (odświeżany co noc); format: [wiki → Przepływ danych](https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/wiki/Przeplyw-danych) |
 | `public/sw.js` | service worker (kopiowany do `dist/` bez hasha) |
