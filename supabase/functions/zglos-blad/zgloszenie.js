@@ -65,7 +65,7 @@ export function validateReport(input) {
 export function blokKodu(s) {
   // Najpierw normalizacja końców linii (CRLF, CR, NEL, LS, PS → LF), potem długość ogrodzenia:
   // liczona na tym samym tekście, który trafia do bloku.
-  const tekst = String(s ?? '').replace(/\r\n|\r|\u0085|\u2028|\u2029/g, '\n');
+  const tekst = String(s ?? '').replace(/\r\n|\r|\u0085|\u{2028}|\u{2029}/gu, '\n');
   const runs = tekst.match(/`+/g) || [];
   const dlugosc = Math.max(3, ...runs.map((r) => r.length + 1));
   const plot = '`'.repeat(dlugosc);
