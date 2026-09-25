@@ -15,13 +15,14 @@ kolejności i informujemy zgłaszającego.
 ## Zakres
 
 - mapa publiczna i panel operatora (`index.html`, `admin.html`, `src/`),
-- funkcja Supabase `zglos-blad` i reguły bazy (`db/`),
+- funkcja Supabase `zglos-blad` i reguły bazy (`supabase/`),
+- cache kafli (`cloudflare/kafle/`),
 - workflowy GitHub Actions (`.github/workflows/`).
 
-Publiczny klucz `sb_publishable_…` i adres projektu Supabase w `config.json` są konfiguracją klienta,
+Publiczny klucz (`anonKey`) i adres projektu Supabase w `config.json` są konfiguracją klienta,
 nie sekretem — bezpieczeństwo zapisu zależy od reguł RLS i allow-listy operatorów.
 
-## Co już jest wdrożone
+## Zabezpieczenia
 
 Publiczny odczyt i zapis tylko dla operatorów z allow-listy po drugim składniku (MFA), ograniczenia
 CHECK i historia zmian w bazie, escapowanie treści, CSP w buildzie, atomowe limity zgłoszeń, przypięte

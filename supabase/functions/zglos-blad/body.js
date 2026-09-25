@@ -1,5 +1,5 @@
 /* Odczyt treści żądania z twardym limitem: strumień jest przerywany w chwili
- * przekroczenia progu, a nie po wczytaniu całości (retest bezpieczeństwa 24.09.2026). */
+ * przekroczenia progu, a nie po wczytaniu całości. */
 
 /**
  * @param {ReadableStream<Uint8Array> | null} stream treść żądania

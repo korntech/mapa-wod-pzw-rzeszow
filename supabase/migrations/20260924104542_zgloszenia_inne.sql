@@ -1,9 +1,8 @@
--- Migracja 2026-09-24: typ zgłoszenia „inne” (brakujące łowisko albo uwaga ogólna).
+-- Typ zgłoszenia „inne” (brakujące łowisko albo uwaga ogólna).
 -- Takie zgłoszenie nie wskazuje rekordu na mapie: nazwę wpisuje zgłaszający, a współrzędnych
 -- nie ma (null). Typy „zb” i „rzeka” nadal wymagają współrzędnych — pilnuje tego CHECK.
 -- Idempotentna. Kolejność wdrożenia: najpierw ta migracja, potem nowa wersja funkcji zglos-blad
 -- (stara funkcja z nową bazą działa; nowa funkcja ze starą bazą odrzuci zgłoszenia „inne”).
--- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
 
 alter table public.zgloszenia drop constraint if exists zgloszenia_typ_check;
 alter table public.zgloszenia add constraint zgloszenia_typ_check

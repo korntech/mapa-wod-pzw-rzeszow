@@ -1,11 +1,7 @@
--- Migracja 2026-09-25: zgłoszenia bez danych kontaktowych.
--- Formularz nie ma już pola „Kontakt” — odpowiedź operatora jest publiczna, w issue zgłoszenia.
--- Dotychczasowe kontakty są kasowane, a CHECK nie pozwala zapisać nowych. Jedyną daną osobową
--- zostaje adres IP (limity nadużyć), kasowany z całym wpisem po 30 dniach (zgloszenia-retencja).
--- Kolumna `kontakt` i parametr `p_kontakt` zostają (zawsze null / ignorowany): wcześniejsze migracje
--- się do nich odwołują (CI uruchamia wszystkie dwa razy), a wdrożona funkcja zglos-blad może
--- jeszcze przekazywać p_kontakt — podpis bez zmian, więc kolejność wdrożenia jest dowolna.
--- Idempotentna. (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
+-- Zgłoszenia bez danych kontaktowych: istniejące kontakty są kasowane, CHECK blokuje nowe.
+-- Kolumna `kontakt` i parametr `p_kontakt` zostają (zawsze null / ignorowany), bo odwołują się
+-- do nich wcześniejsze migracje, a podpis funkcji bez zmian pozwala wdrażać bazę i funkcję
+-- w dowolnej kolejności. Idempotentna.
 
 update public.zgloszenia set kontakt = null where kontakt is not null;
 

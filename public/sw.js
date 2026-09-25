@@ -72,7 +72,7 @@ const czekaj = (ms) => new Promise((res) => setTimeout(res, ms));
 
 /** Pobranie kafla z jednym ponowieniem po błędzie serwera lub sieci. Nowe żądanie z adresu,
  *  a nie fetch(ev.request): Firefox odrzuca ponowne wysłanie żądania obrazka <img crossorigin>
- *  do innego hosta (NetworkError), więc każdy kafel kończył się 503 i mapa była bez podkładu. */
+ *  do innego hosta (NetworkError). */
 async function pobierzKafel(zadanie) {
   const pobierz = () => fetch(zadanie.url, { mode: 'cors', credentials: 'omit' });
   try {
@@ -127,7 +127,7 @@ async function obsluzKafel(zadanie) {
 
 /** Najpierw sieć; kopia z cache, gdy sieć zawiedzie albo nie odpowie w LIMIT_SIECI_MS
  *  (słaby zasięg — pobieranie trwa dalej w tle i odświeża cache). Bez kopii błąd sieci
- *  trafia do strony jak dotąd. */
+ *  trafia do strony. */
 async function najpierwSiec(zadanie) {
   const cache = await caches.open(CACHE_APP);
   const zSieci = fetch(zadanie).then((odp) => {

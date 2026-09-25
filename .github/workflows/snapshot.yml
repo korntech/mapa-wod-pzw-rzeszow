@@ -9,10 +9,9 @@
 #  - gałąź main jest chroniona regułą; w liście obejść (bypass) jest „Deploy keys”,
 #    więc bot może zapisać snapshot, a nikt inny nie ominie reguły;
 #  - push kluczem wyzwala zdarzenie `push`, więc deploy.yml publikuje stronę zwykłą drogą
-#    (push tokenem GITHUB_TOKEN nie wyzwala innych workflowów);
-# PRZEJŚCIOWO: dopóki sekret SNAPSHOT_DEPLOY_KEY nie jest ustawiony, checkout wraca do tokenu
-# Actions, dlatego token ma jeszcze contents: write. Po dodaniu klucza i włączeniu reguły main
-# zmienić na contents: read (zadanie w notatkach projektu).
+#    (push tokenem GITHUB_TOKEN nie wyzwala innych workflowów).
+# Bez sekretu SNAPSHOT_DEPLOY_KEY checkout używa tokenu Actions — tylko dlatego token ma
+# contents: write; przy ustawionym kluczu wystarczy contents: read.
 
 name: Snapshot danych z bazy
 

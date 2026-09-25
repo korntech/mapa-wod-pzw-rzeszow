@@ -20,8 +20,8 @@ export const LIMITY = {
 export const TYPY = { zb: 'zbiornik', rzeka: 'rzeka', inne: 'inne' };
 
 /** Jedyne dozwolone pola wejścia; każde inne oznacza odrzucenie (ścisły schemat).
- *  „kontakt” jest przyjmowany, ale ignorowany: formularz już go nie ma (od 25.09.2026 nie zbieramy
- *  danych kontaktowych), a strona z pamięci podręcznej przeglądarki może jeszcze wysłać puste pole. */
+ *  „kontakt” jest przyjmowany, ale ignorowany: formularz go nie ma, a strona z pamięci podręcznej
+ *  przeglądarki może jeszcze wysłać to pole. */
 const POLA = new Set(['typ', 'nazwa', 'lat', 'lon', 'opis', 'kontakt', 'www']);
 
 const tekst = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');

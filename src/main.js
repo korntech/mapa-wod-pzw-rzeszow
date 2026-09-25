@@ -342,7 +342,7 @@ function initMap(data, snapshotDate) {
 
 /** Service worker z pamięcią podręczną kafli Geoportalu i plików strony (public/sw.js).
  *  Rejestracja po wczytaniu strony, żeby nie konkurować z pobieraniem danych; brak wsparcia
- *  (np. tryb prywatny) niczego nie zmienia — mapa działa jak dotąd. */
+ *  (np. tryb prywatny) niczego nie zmienia — mapa działa bez niego. */
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   const base = import.meta.env.BASE_URL;

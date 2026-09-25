@@ -1,14 +1,10 @@
-# Kontrola dostępności: strona (GitHub Pages), snapshot danych, baza (Supabase REST),
-# funkcja zgłoszeń i — gdy skonfigurowany — własny cache kafli (Cloudflare Worker) — co 10 minut (config.json → healthcheck.coMinut; harmonogram GitHuba
-# bywa opóźniony o kilka minut). Kontrola kończy się błędem przy każdej awarii, a ALARM
-# (issue „awaria” przypisane do opiekuna → e-mail/push z GitHuba) powstaje dopiero po
-# `alarmPoNieudanych` kolejnych nieudanych przebiegach (domyślnie 3 ≈ 30 min), żeby chwilowe
-# czkawki nie budziły nikogo. Po przywróceniu usługi issue jest zamykane z czasem trwania awarii,
-# liczonym od pierwszej nieudanej kontroli — to jest zapis do raportu dostępności.
-#
-# Granica: kontrola działa w GitHub Actions; awaria samego GitHuba (Pages + Actions naraz)
-# nie zostanie zgłoszona przez ten mechanizm. Niezależny monitor zewnętrzny (np. UptimeRobot,
-# co 5 min, e-mail/SMS) jest zalecany jako druga warstwa — patrz README.
+# Kontrola dostępności co 10 minut (config.json → healthcheck.coMinut): strona (GitHub Pages),
+# snapshot danych, baza (Supabase REST), funkcja zgłoszeń i — gdy skonfigurowany — cache kafli
+# (Cloudflare Worker). Kontrola kończy się błędem przy każdej awarii, a ALARM (issue „awaria”
+# przypisane do opiekuna) powstaje dopiero po `alarmPoNieudanych` kolejnych nieudanych
+# przebiegach, żeby chwilowe czkawki nie alarmowały. Po przywróceniu usługi issue jest zamykane
+# z czasem trwania awarii. Awarii samego GitHuba ten mechanizm nie wykryje — do tego służy
+# zewnętrzny monitor.
 
 name: Healthcheck strony i bazy
 

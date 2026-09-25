@@ -3,10 +3,8 @@
 # i komentarz z podpowiedzią dla operatora. Model nie zmienia danych ani kodu.
 # Wymaga sekretu COPILOT_PAT: fine-grained PAT konta z Copilotem, uprawnienie „Copilot Requests”.
 #
-# WYŁĄCZONE AUTOMATYCZNIE (decyzja 24.09.2026): na etapie rozruchu zgłoszenia klasyfikuje
-# operator ręcznie, więc anonimowa treść z formularza nie uruchamia modelu ani nie zużywa
-# limitu Copilota. Klasyfikację można uruchomić ręcznie dla wybranego issue (Run workflow).
-# Aby przywrócić tryb automatyczny, odkomentuj wyzwalacz `issues` poniżej.
+# Uruchamiany tylko ręcznie (Run workflow, numer issue), więc anonimowa treść z formularza
+# nie uruchamia modelu sama. Tryb automatyczny: odkomentuj wyzwalacz `issues` poniżej.
 
 name: Triage zgłoszeń
 

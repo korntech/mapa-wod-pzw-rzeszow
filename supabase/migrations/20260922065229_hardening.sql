@@ -1,4 +1,4 @@
--- Wzmocnienie bazy po przeglądzie bezpieczeństwa (2026-09-22):
+-- Wzmocnienie bazy:
 --  1. is_operator(): tożsamość po auth.uid() i bieżącym stanie auth.users (e-mail potwierdzony,
 --     konto nie zablokowane, nie usunięte), porównanie e-maili bez rozróżniania wielkości liter;
 --  2. search_path funkcji pomocniczych ustawiony na pusty (zalecenie lintera Supabase);
@@ -6,9 +6,7 @@
 --  4. ograniczenia CHECK: długości pól, znaki sterujące, kraina, flaga a, obrys współrzędnych,
 --     kształt geometrii rzek — limity zgodne z tools/snapshot/validate.mjs;
 --  5. historia zmian (kto, kiedy, stan przed i po) na tabelach łowisk, niedostępna z API.
--- Idempotentne. Uruchom w SQL Editor projektu.
-
--- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
+-- Idempotentne.
 
 -- ===== 1–2. Funkcje pomocnicze =====
 create or replace function public.is_operator()

@@ -47,7 +47,7 @@ Komunikaty przy logowaniu:
 ## 3. Poprawianie położenia zbiornika (pinezki)
 
 1. Zakładka **Zbiorniki**, kliknij zbiornik na liście (mapa przybliży się do niego).
-2. Na mapie pojawi się pinezka, którą można **przeciągnąć** w właściwe miejsce (środek akwenu).
+2. Na mapie pojawi się pinezka, którą można **przeciągnąć** we właściwe miejsce (środek akwenu).
    Współrzędne w formularzu (Szerokość / Długość) uzupełnią się same, a znacznik
    „Lokalizacja przybliżona (⚠)” zostanie odznaczony.
 3. Sprawdź na ortofotomapie, że pinezka leży na wodzie.
@@ -127,7 +127,7 @@ kończy rysowanie; uzupełnij formularz i **💾 Zapisz**. Linia musi mieć co n
 | „Błąd zapisu: … row-level security …” | konto jest zalogowane, ale nie jest na liście operatorów — zgłoś osobie technicznej |
 | „Niepoprawne współrzędne”, „Podaj nazwę”, „Linia musi mieć min. 2 punkty” | uzupełnij brakujące pole albo popraw pinezkę / linię |
 | komunikat w rogu mapy „Podkład Geoportalu nie odpowiada…” | chwilowa awaria podkładu po stronie GUGiK; panel przełączył się na inny podkład, dane łowisk są aktualne. Można też ręcznie wybrać inny podkład w przełączniku |
-| zmiana nie widać na mapie publicznej | odśwież stronę mapy (Ctrl+F5 / przeciągnij w dół na telefonie) |
+| zmiany nie widać na mapie publicznej | odśwież stronę mapy (Ctrl+F5 / przeciągnij w dół na telefonie) |
 | nie pamiętam hasła | poproś osobę techniczną o ustawienie nowego hasła |
 
 ## 9. Kogo pytać

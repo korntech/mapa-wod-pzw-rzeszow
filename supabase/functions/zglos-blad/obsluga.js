@@ -1,7 +1,7 @@
 /* Logika obsługi zgłoszenia — bez Deno i bez sieci, z wstrzykniętymi zależnościami,
  * żeby dało się ją przetestować w Node (obsluga.test.mjs). index.ts tylko ją spina.
  *
- * Kolejność jest istotna (F01 przeglądu bezpieczeństwa 23.09.2026):
+ * Kolejność jest istotna:
  *   1. walidacja ścisłego schematu,
  *   2. ATOMOWA rezerwacja limitu w bazie (funkcja SQL z blokadą) — wpis powstaje PRZED issue,
  *   3. dopiero potem issue na GitHubie; niepowodzenie zapisu przerywa obsługę,

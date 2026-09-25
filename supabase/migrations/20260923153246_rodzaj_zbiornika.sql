@@ -1,6 +1,5 @@
--- Migracja 2026-09-23: rodzaj zbiornika, flaga NO-KILL i obwód rybacki dla zbiorników.
--- Podstawa filtrów na mapie publicznej („wody płynące / zaporowe”, obwody) zgłoszonych
--- przez Okręg na spotkaniu 23.09.2026. Idempotentna — można uruchamiać wielokrotnie.
+-- Rodzaj zbiornika, flaga NO-KILL i obwód rybacki dla zbiorników (podstawa filtrów na mapie).
+-- Idempotentna.
 --
 -- Nowe kolumny w public.zbiorniki:
 --   k   text     rodzaj: 'zaporowy' | 'pozwirowy' | 'staw' | 'inny'   (domyślnie 'inny')

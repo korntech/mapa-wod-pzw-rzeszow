@@ -1,7 +1,6 @@
 -- Zgłoszenia błędów z formularza na mapie: dziennik i podstawa limitu na adres IP.
 -- Pisze i czyta tylko funkcja Supabase kluczem serwisowym; klucz publiczny nie ma dostępu.
--- Idempotentne. Uruchom w SQL Editor projektu.
--- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
+-- Idempotentne.
 
 create table if not exists public.zgloszenia (
   id bigint generated always as identity primary key,

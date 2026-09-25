@@ -1,10 +1,7 @@
--- Migracja 2026-09-23: poprawki po przeglądzie bezpieczeństwa (F01, F03, F04).
--- Idempotentna. Uruchom w SQL Editor projektu — PO wdrożeniu nowej wersji funkcji zglos-blad
--- i panelu operatora (panel z obsługą MFA), inaczej stara funkcja zgłoszeń przestanie działać,
--- a operatorzy bez skonfigurowanego MFA nie zapiszą zmian.
--- (transakcję otwiera i zamyka Supabase CLI — każda migracja to jedna transakcja)
+-- Atomowa rezerwacja limitu zgłoszeń, retencja zgłoszeń (pg_cron), zapis w panelu tylko po MFA.
+-- Idempotentna. Wymaga funkcji zglos-blad wywołującej zgloszenie_rezerwuj i panelu z obsługą MFA.
 
--- ===== F01: atomowa rezerwacja limitu zgłoszeń =====
+-- ===== Atomowa rezerwacja limitu zgłoszeń =====
 -- Wpis w tabeli powstaje PRZED założeniem issue, w jednej transakcji z policzeniem limitów,
 -- pod blokadą doradczą — równoległe żądania nie omijają limitu, a żądanie, które nie
 -- zwiększyło licznika, nigdy nie tworzy issue (obsługa: supabase/functions/zglos-blad).
@@ -63,8 +60,8 @@ $$;
 revoke all on function public.zgloszenie_rezerwuj(text, text, text, double precision, double precision, text, text, integer, integer, integer) from public, anon, authenticated;
 grant execute on function public.zgloszenie_rezerwuj(text, text, text, double precision, double precision, text, text, integer, integer, integer) to service_role;
 
--- ===== F04: retencja adresów IP i kontaktów harmonogramem (pg_cron), nie „przy okazji” =====
--- Wpisy starsze niż 30 dni znikają codziennie o 03:15 UTC niezależnie od ruchu i wyłącznika
+-- ===== Retencja zgłoszeń (pg_cron) =====
+-- Wpisy starsze niż 30 dni są kasowane codziennie o 03:15 UTC, niezależnie od ruchu i wyłącznika
 -- formularza. Przebiegi i błędy: select * from cron.job_run_details order by start_time desc.
 do $$
 begin
@@ -82,10 +79,9 @@ begin
   end if;
 end $$;
 
--- ===== F03: zapis w panelu tylko po drugim składniku (MFA, poziom aal2) =====
+-- ===== Zapis w panelu tylko po drugim składniku (MFA, poziom aal2) =====
 -- Samo hasło (aal1) pozwala się zalogować i czytać, ale reguły RLS odrzucą każdy zapis,
--- dopóki sesja nie przejdzie weryfikacji TOTP. Panel prowadzi operatora przez rejestrację
--- aplikacji uwierzytelniającej i wpisanie kodu przy każdym logowaniu.
+-- dopóki sesja nie przejdzie weryfikacji TOTP.
 create or replace function public.is_operator()
 returns boolean
 language sql

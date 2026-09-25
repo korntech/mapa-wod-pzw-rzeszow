@@ -8,7 +8,7 @@ import { MAP, SNAPSHOT } from './config.js';
 const { code, proj4: definition, origin, bounds, resolutions, tileSize } = MAP.crs;
 
 /** Zasięg przesuwania mapy: obrys danych (snapshot.bbox) z marginesem map.bounds.marginDeg.
- *  Poza nim Geoportal i tak nie ma treści dla tej mapy, a szare pole wyglądało na błąd. */
+ *  Poza nim Geoportal i tak nie ma treści dla tej mapy, a szare pole wygląda na błąd. */
 export function maxBounds() {
   const { lat, lon } = SNAPSHOT.bbox;
   const m = MAP.bounds.marginDeg;
