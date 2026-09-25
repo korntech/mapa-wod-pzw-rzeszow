@@ -3,10 +3,9 @@
 Jeśli znajdziesz podatność w mapie, panelu operatora, funkcji zgłoszeń lub automatyzacjach,
 **nie zakładaj publicznego issue** — treść byłaby widoczna dla wszystkich, zanim zdążymy ją naprawić.
 
-Zgłoś ją prywatnie:
-
-- **GitHub → zakładka „Security” → „Report a vulnerability”** (prywatne zgłoszenie do opiekunów repozytorium), albo
-- e-mailem do opiekuna technicznego: **kamilkornacki@icloud.com**.
+Zgłoś ją prywatnie przez formularz GitHub:
+**[Report a vulnerability](https://github.com/pzw-rzeszow/mapa-wod-pzw-rzeszow/security/advisories/new)**
+(zakładka „Security” w repozytorium). Zgłoszenie widzą tylko opiekunowie repozytorium.
 
 Podaj, co i gdzie zauważyłeś(-aś), jak to odtworzyć i jaki jest możliwy skutek. Odpowiadamy w ciągu
 7 dni; poprawki krytyczne (np. obejście limitów zgłoszeń, zapis do bazy bez uprawnień) wdrażamy w pierwszej
