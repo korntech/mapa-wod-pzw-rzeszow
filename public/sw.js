@@ -70,16 +70,19 @@ function kafelDoZapisu(status, typ) {
 
 const czekaj = (ms) => new Promise((res) => setTimeout(res, ms));
 
-/** Pobranie kafla z jednym ponowieniem po błędzie serwera lub sieci. */
+/** Pobranie kafla z jednym ponowieniem po błędzie serwera lub sieci. Nowe żądanie z adresu,
+ *  a nie fetch(ev.request): Firefox odrzuca ponowne wysłanie żądania obrazka <img crossorigin>
+ *  do innego hosta (NetworkError), więc każdy kafel kończył się 503 i mapa była bez podkładu. */
 async function pobierzKafel(zadanie) {
+  const pobierz = () => fetch(zadanie.url, { mode: 'cors', credentials: 'omit' });
   try {
-    const odp = await fetch(zadanie);
+    const odp = await pobierz();
     if (odp.status < 500) return odp;
   } catch {
     /* ponowienie niżej */
   }
   await czekaj(PONOWIENIE_MS);
-  return fetch(zadanie);
+  return pobierz();
 }
 
 /** Kopia odpowiedzi ze znacznikiem czasu zapisu (do liczenia ważności). */

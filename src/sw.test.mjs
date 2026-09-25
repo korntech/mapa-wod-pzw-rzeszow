@@ -90,3 +90,20 @@ test('do cache trafia tylko poprawny obraz (HTTP 500 Geoportalu i XML wyjątku n
   assert.equal(kafelDoZapisu(304, 'image/png'), false);
   assert.equal(kafelDoZapisu(200, null), false);
 });
+
+test('pobierzKafel pobiera z adresu (nie ponawia ev.request — Firefox go odrzuca) i ponawia po 5xx', async () => {
+  const wywolania = [];
+  const odpowiedzi = [new Response('', { status: 500 }), new Response('x', { status: 200 })];
+  ctx.fetch = async (arg, opcje) => {
+    wywolania.push([arg, opcje]);
+    return odpowiedzi.shift();
+  };
+  const zadanie = { url: kafel, mode: 'cors', credentials: 'same-origin' };
+  const odp = await vm.runInContext('pobierzKafel', ctx)(zadanie);
+  assert.equal(odp.status, 200);
+  assert.equal(wywolania.length, 2);
+  for (const [arg, opcje] of wywolania) {
+    assert.equal(arg, kafel);
+    assert.deepEqual({ ...opcje }, { mode: 'cors', credentials: 'omit' });
+  }
+});
